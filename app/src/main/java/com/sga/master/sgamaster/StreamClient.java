@@ -19,9 +19,12 @@ import java.nio.charset.CharsetEncoder;
 public class StreamClient extends WebSocketClient{
 
 
+    private VideoStreamDecoder decoder;
 
-    public StreamClient( URI serverUri , Draft draft ) {
+    public StreamClient( URI serverUri , Draft draft , VideoStreamDecoder decoder ) {
         super( serverUri, draft );
+
+        this.decoder = decoder;
 
 
     }
@@ -38,14 +41,16 @@ public class StreamClient extends WebSocketClient{
     }
 
 
-    private final int MediaBlockSize = 1024 * 512;
-    ByteBuffer buf = ByteBuffer.allocate(MediaBlockSize);
 
     @Override
     public void onMessage(String msg) {
 
         Log.d("StreamClient","onMessage: new message received");
-        byte[] received = msg.getBytes();
+
+        if(decoder!=null) {
+            byte[] received = msg.getBytes();
+            decoder.getStream(received);
+        }
         //VideoStreamDecoder
 
     }
