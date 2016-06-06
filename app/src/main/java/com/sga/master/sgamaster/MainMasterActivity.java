@@ -12,7 +12,7 @@ import java.net.URISyntaxException;
 
 public class MainMasterActivity extends AppCompatActivity implements SurfaceHolder.Callback{
 
-    private String SGA_URI = "ws://localhost:8887";
+    private String SGA_URI = "ws://192.168.1.217:8088";
     private StreamClient client;
     private VideoStreamDecoder decoder;
     private SurfaceView videoView;
@@ -26,7 +26,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
         videoView = (SurfaceView) this.findViewById(R.id.videoSurfaceView);
 
-        decoder.init(videoView.getHolder().getSurface(), "filePath");
+        decoder.init(videoView.getHolder().getSurface(), SGA_URI);
 
         try {
 

@@ -10,6 +10,9 @@ import android.media.MediaFormat;
 import android.util.Log;
 import android.view.Surface;
 
+/*
+https://github.com/taehwandev/MediaCodecExample/tree/master/src/net/thdev/mediacodecexample/decoder
+*/
 public class VideoDecoderThread extends Thread {
     private static final String VIDEO = "video/";
     private static final String TAG = "VideoDecoder";
@@ -33,7 +36,7 @@ public class VideoDecoderThread extends Thread {
                     mDecoder = MediaCodec.createDecoderByType(mime);
                     try {
                         Log.d(TAG, "format : " + format);
-                        mDecoder.configure(format, surface, null, 0 /* Decoder */);
+                        mDecoder.configure(format, surface, null/* crypto */, 0 /* Decoder */);
 
                     } catch (IllegalStateException e) {
                         Log.e(TAG, "codec '" + mime + "' failed configuration. " + e);

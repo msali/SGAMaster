@@ -32,9 +32,17 @@ public class VideoStreamDecoder {
 
         try {
             mExtractor = new MediaExtractor();
+            /*
+            Android MediaExtractor parses H264 (contained in a container format
+            If I examine the H264 stream, I see that it consists of NAL units demarcated by the sequence 00 00 00 01.
+            The samples returned by MediaExtractor are exactly those NAL units, each beginning with that marker -- except that, for the particular data source, the first three NAL units are concatenated.
+            The first two NAL units are very short (29 and 8 bytes).
+            */
 
             mExtractor.setDataSource(filePath);
-
+            /*
+            Sets the data source (file-path or http URL) to use.
+            */
             for (int i = 0; i < mExtractor.getTrackCount(); i++) {
                 MediaFormat format = mExtractor.getTrackFormat(i);
 
