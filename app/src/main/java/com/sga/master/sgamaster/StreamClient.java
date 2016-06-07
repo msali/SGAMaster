@@ -41,6 +41,10 @@ public class StreamClient extends WebSocketClient{
     }
 
 
+    /*
+    as long as your packet source is sending in single NAL unit mode or non-interleaved mode you can extract the NAL units
+    without any further processing from the packets and dump them to disk with 0x00,0x00,0x00,0x01 as divider between them.
+    */
 
     @Override
     public void onMessage(String msg) {

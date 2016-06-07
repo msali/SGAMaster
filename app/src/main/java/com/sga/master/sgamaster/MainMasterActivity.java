@@ -13,29 +13,33 @@ import java.net.URISyntaxException;
 public class MainMasterActivity extends AppCompatActivity implements SurfaceHolder.Callback{
 
     private String SGA_URI = "ws://192.168.1.217:8088";
-    private StreamClient client;
-    private VideoStreamDecoder decoder;
     private SurfaceView videoView;
+    private VideoDecoderThread mVideoDecoder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main_master);
 
-        decoder = new VideoStreamDecoder();
+        videoView = new SurfaceView(this);
+        videoView.getHolder().addCallback(this);
+        setContentView(videoView);
 
-        videoView = (SurfaceView) this.findViewById(R.id.videoSurfaceView);
+        mVideoDecoder = new VideoDecoderThread();
 
-        decoder.init(videoView.getHolder().getSurface(), SGA_URI);
+        //decoder.init(videoView.getHolder().getSurface(), SGA_URI);
 
+
+        /*
         try {
 
             client = new StreamClient( new URI( SGA_URI ), new Draft_10() , decoder); // more about drafts here: http://github.com/TooTallNate/Java-WebSocket/wiki/Drafts
             client.connect();
+
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }
 
+        */
 
     }
 
@@ -50,16 +54,22 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        if (mVideoDecoder != null) {
+            if (mVideoDecoder.init(holder.getSurface(), this.SGA_URI)) {
+                mVideoDecoder.start();
 
+            } else {
+                mVideoDecoder = null;
+            }
+
+        }
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
 
-        /*
         if (mVideoDecoder != null) {
             mVideoDecoder.close();
         }
-        */
     }
 }
