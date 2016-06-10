@@ -19,15 +19,14 @@ import java.nio.charset.CharsetEncoder;
 public class StreamClient extends WebSocketClient{
 
 
-    private VideoStreamDecoder decoder;
 
-    public StreamClient( URI serverUri , Draft draft , VideoStreamDecoder decoder ) {
+    public StreamClient( URI serverUri , Draft draft ) {
         super( serverUri, draft );
 
-        this.decoder = decoder;
 
 
     }
+
 
     public StreamClient( URI serverURI ) {
         super( serverURI );
@@ -36,7 +35,7 @@ public class StreamClient extends WebSocketClient{
     @Override
     public void onOpen(ServerHandshake serverHandshake) {
 
-        Log.d("StreamClient","onOpen: opened connection");
+        Log.e("StreamClient","onOpen: opened connection");
         // if you plan to refuse connection based on ip or httpfields overload: onWebsocketHandshakeReceivedAsClient
     }
 
@@ -49,19 +48,39 @@ public class StreamClient extends WebSocketClient{
     @Override
     public void onMessage(String msg) {
 
-        Log.d("StreamClient","onMessage: new message received");
+        Log.e("StreamClient","onMessage: new message received");
 
+        Log.e("msg:",msg);
+        /*
         if(decoder!=null) {
             byte[] received = msg.getBytes();
             decoder.getStream(received);
         }
+        */
+        //VideoStreamDecoder
+
+    }
+
+    @Override
+    public void onMessage(ByteBuffer bytes) {
+
+        Log.e("StreamClient","onMessage: new bytebyffer received");
+
+
+        /*
+        if(decoder!=null) {
+            byte[] received = msg.getBytes();
+            decoder.getStream(received);
+        }
+        */
+
         //VideoStreamDecoder
 
     }
 
     @Override
     public void onClose( int code, String reason, boolean remote ) {
-        Log.d("StreamClient","onClose: Connection closed by"  + ( remote ? "remote peer" : "StreamClient" ));
+        Log.e("StreamClient","onClose: Connection closed by"  + ( remote ? "remote peer" : "StreamClient" ));
     }
 
     @Override
