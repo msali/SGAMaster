@@ -34,7 +34,7 @@ public class VideoDecoderThread extends Thread {
     }
 
 
-    public boolean init() {
+    private boolean init() {
         eosReceived = false;
         try {
             //mExtractor = new MediaExtractor();
@@ -64,6 +64,7 @@ public class VideoDecoderThread extends Thread {
                         return false;
                     } catch (Exception e) {
                         e.printStackTrace();
+                        return false;
                     }
 
             mDecoder.start();
@@ -317,7 +318,10 @@ public class VideoDecoderThread extends Thread {
     @Override
     public void run() {
 
-        init();
+        if(!init()){
+            Log.e(TAG, "ERROR while initializing MediaCoded");
+            return;
+        }
         BufferInfo info = new BufferInfo();
         //ByteBuffer[] inputBuffers = mDecoder.getInputBuffers();
         //mDecoder.getOutputBuffers();

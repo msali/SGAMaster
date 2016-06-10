@@ -39,10 +39,6 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         videoView.getHolder().addCallback(this);
         setContentView(videoView);
 
-
-        mVideoDecoder = null;//new VideoDecoderThread();
-
-
         //decoder.init(videoView.getHolder().getSurface(), SGA_URI);
 
 
@@ -136,7 +132,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        if (mVideoDecoder != null) {
+        /*if (mVideoDecoder != null) {
             if (mVideoDecoder.init(holder.getSurface(), this.SGA_URI)) {
                 mVideoDecoder.start();
 
@@ -144,7 +140,11 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
                 mVideoDecoder = null;
             }
 
-        }
+        }*/
+
+        mVideoDecoder = new VideoDecoderThread(streamListener,videoView.getHolder().getSurface(),width,height);
+        mVideoDecoder.start();
+
     }
 
     @Override
