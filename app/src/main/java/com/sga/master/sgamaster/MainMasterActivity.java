@@ -18,7 +18,8 @@ import java.net.URISyntaxException;
 
 public class MainMasterActivity extends AppCompatActivity implements SurfaceHolder.Callback{
 
-    private String SGA_URI = "ws://192.168.1.57:8088";
+    private String TAG = "MainMasterActivity";
+    private String SGA_URI = "ws://192.168.1.5:8088";
     private SurfaceView videoView;
     private VideoDecoderThread mVideoDecoder;
     private StreamListener streamListener = new StreamListener();
@@ -36,10 +37,10 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         wsfactory = new WebSocketFactory().setConnectionTimeout(2000);
 
         videoView = new SurfaceView(this);
+        //videoView.getHolder().setFixedSize();
         videoView.getHolder().addCallback(this);
         setContentView(videoView);
 
-        //decoder.init(videoView.getHolder().getSurface(), SGA_URI);
 
 
     }
@@ -56,11 +57,21 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
                 //WebSocket ws = wsfactory.createSocket("ws://localhost/endpoint", 5000);
                 //timeout = 5000
 
+                Log.e("ClientConnector","run1");
                 WebSocket ws = wsfactory.createSocket(SGA_URI, 5000);
+
+                Log.e("ClientConnector","run2");
                 ws.addListener(streamListener);
+
+                Log.e("ClientConnector","run3");
                 // Connect to the server and perform an opening handshake.
                 // This method blocks until the opening handshake is finished.
                 ws.connect();
+
+                while(mVideoDecoder==null);
+
+                mVideoDecoder.start();
+
                 Log.e("ClientConnector","connected");
             } catch (IOException e) {
                 e.printStackTrace();
@@ -69,28 +80,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
                 e.printStackTrace();
             }
 
-            /*
-            try {
-                Log.e("Connection", "starting: "+SGA_URI);
-                //client = new StreamClient( new URI( SGA_URI ), new Draft_10() , decoder); // more about drafts here: http://github.com/TooTallNate/Java-WebSocket/wiki/Drafts
-                client = new StreamClient( new URI( SGA_URI ), new Draft_10());
-                try{
-                    client.connectBlocking();
-                }catch (Throwable t){
-                    Log.d("aaa", t.getMessage());
-                }
 
-                Log.e("Connection", "done");
-
-
-            }
-            catch (URISyntaxException e) {
-                e.printStackTrace();
-            }
-            catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            */
         }
     }
 
@@ -98,6 +88,8 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     public void onStart() {
         super.onStart();
 
+        connectionThread = new ClientConnector();
+        connectionThread.start();
     }
 
     @Override
@@ -110,10 +102,10 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     protected void onResume() {
         super.onResume();
 
+        Log.e(TAG,"onResume");
 
 
-        connectionThread = new ClientConnector();
-        connectionThread.start();
+
     }
 
     @Override
@@ -130,6 +122,8 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
     }
 
+
+    private int SURFACE_WIDTH,SURFACE_HEIGHT;
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
         /*if (mVideoDecoder != null) {
@@ -141,9 +135,11 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
             }
 
         }*/
+        SURFACE_WIDTH=width;
+        SURFACE_HEIGHT=height;
 
         mVideoDecoder = new VideoDecoderThread(streamListener,videoView.getHolder().getSurface(),width,height);
-        mVideoDecoder.start();
+
 
     }
 
