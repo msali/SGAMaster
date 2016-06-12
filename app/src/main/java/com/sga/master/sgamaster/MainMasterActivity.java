@@ -1,5 +1,9 @@
 package com.sga.master.sgamaster;
 
+import android.app.Activity;
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
+import android.nfc.Tag;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -30,16 +34,21 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
+        //setContentView(R.layout.customlayout);
 
         // Create a web socket factory. The timeout value remains 0.
         //wsfactory = new WebSocketFactory();
         wsfactory = new WebSocketFactory().setConnectionTimeout(2000);
 
-        videoView = new SurfaceView(this);
-        //videoView.getHolder().setFixedSize();
+        videoView = new SurfaceView(this);//(SurfaceView) this.findViewById(R.id.videoView);
+
+        videoView.getHolder().setFixedSize(720,1184);
         videoView.getHolder().addCallback(this);
+
         setContentView(videoView);
+
 
 
 
@@ -68,8 +77,11 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
                 // This method blocks until the opening handshake is finished.
                 ws.connect();
 
+                Log.e("ClientConnector","connected");
                 while(mVideoDecoder==null);
 
+
+                Log.e("ClientConnector","connected");
                 mVideoDecoder.start();
 
                 Log.e("ClientConnector","connected");
@@ -137,7 +149,8 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         }*/
         SURFACE_WIDTH=width;
         SURFACE_HEIGHT=height;
-
+        if(getResources().getConfiguration().orientation== Configuration.ORIENTATION_LANDSCAPE)return;
+        Log.e(TAG, "w:"+width+" h:"+height+"   VS 720x1184");
         mVideoDecoder = new VideoDecoderThread(streamListener,videoView.getHolder().getSurface(),width,height);
 
 

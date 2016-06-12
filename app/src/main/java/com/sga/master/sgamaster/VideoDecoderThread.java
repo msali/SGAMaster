@@ -587,8 +587,9 @@ public class VideoDecoderThread extends Thread {
                 chunkPos++;
                 return next;
             } else {
-                while (currentChunk == null)
-                    currentChunk = streamListener.getNextChunk();
+
+                currentChunk = streamListener.getNextChunk();
+                while(currentChunk==null)currentChunk = streamListener.getNextChunk();
 
                 chunkPos = 0;
                 next = currentChunk[chunkPos];
