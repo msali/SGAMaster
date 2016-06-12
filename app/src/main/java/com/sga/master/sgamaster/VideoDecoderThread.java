@@ -45,6 +45,7 @@ public class VideoDecoderThread extends Thread {
 
     private boolean init() {
         eosReceived = false;
+        mDecoder=null;
         try {
             //mExtractor = new MediaExtractor();
             //mExtractor.setDataSource(filePath);
@@ -57,12 +58,12 @@ public class VideoDecoderThread extends Thread {
             //A key describing the desired clockwise rotation on an output surface.
             format.setInteger(MediaFormat.KEY_ROTATION, 0);
 
-            String mime = format.getString(MediaFormat.KEY_MIME);
+            String mime = MIME;//= format.getString(MediaFormat.KEY_MIME);
             //if (mime.startsWith(VIDEO)) {
             //mExtractor.selectTrack(i);
-            mDecoder = MediaCodec.createDecoderByType(mime);
+            mDecoder = MediaCodec.createDecoderByType(MIME);
             try {
-                Log.d(TAG, "format : " + format);
+                //Log.d(TAG, "format : " + format);
                 ByteBuffer[] configBuffers = readConfigFrame();
                 format.setByteBuffer("csd-0", configBuffers[0]/*sps*/);
                 format.setByteBuffer("csd-1", configBuffers[1]/*pps*/);
@@ -453,11 +454,124 @@ public class VideoDecoderThread extends Thread {
     }
     */
 
+
     @Override
     public void run() {
 
         if (!init()) {
-            //Log.e(TAG, "ERROR while initializing MediaCoded");
+            Log.e(TAG, "ERROR while initializing MediaCodec");
+            return;
+        }
+        BufferInfo info = new BufferInfo();
+        //ByteBuffer[] inputBuffers = mDecoder.getInputBuffers();
+        //mDecoder.getOutputBuffers();
+
+        long currentTime;
+
+        boolean isInput = true;
+        //boolean first = false;
+        //long startWhen = 0;
+
+
+        ByteBuffer[] decoderInputBuffers = mDecoder.getInputBuffers();
+        ByteBuffer[] decoderOutputBuffers = mDecoder.getOutputBuffers();
+
+        int inputIndex = -1;
+        int outIndex = -1;
+
+        while (!eosReceived) {
+            //byte[] chunk = streamListener.getNextChunk();
+            if (isInput) {
+                byte[] nextNALU=null;
+                try{
+                    nextNALU = picker.getNALU();   //streamListener.getNextChunk();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Log.e(TAG, e.getMessage());
+                }
+
+                if (nextNALU == null) {
+                    continue;
+                }
+
+                inputIndex = mDecoder.dequeueInputBuffer(10000);
+                if (inputIndex >= 0) {
+                    // fill inputBuffers[inputBufferIndex] with valid data
+                    ByteBuffer inputBuffer = decoderInputBuffers[inputIndex];
+                    inputBuffer.clear();
+                    inputBuffer.put(nextNALU);
+
+                    currentTime = System.currentTimeMillis();
+
+                    mDecoder.queueInputBuffer(inputIndex, 0, nextNALU.length, currentTime, 0);
+
+                }
+            }
+
+            outIndex = mDecoder.dequeueOutputBuffer(info, 10000);
+            Log.e(TAG,"output buffer dequeued");
+            switch (outIndex) {
+                case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
+                    Log.e(TAG, "INFO_OUTPUT_BUFFERS_CHANGED");
+                    mDecoder.getOutputBuffers();
+                    break;
+
+                case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
+                    Log.e(TAG, "INFO_OUTPUT_FORMAT_CHANGED format : " + mDecoder.getOutputFormat());
+                    break;
+
+                case MediaCodec.INFO_TRY_AGAIN_LATER:
+                    Log.e(TAG, "INFO_TRY_AGAIN_LATER");
+                    break;
+
+                default:
+                    /*
+                    if (!first) {
+                        startWhen = System.currentTimeMillis();
+                        first = true;
+                    }
+                    try {
+                        long sleepTime = (info.presentationTimeUs / 1000) - (System.currentTimeMillis() - startWhen);
+                        Log.d(TAG, "info.presentationTimeUs : " + (info.presentationTimeUs / 1000) + " playTime: " + (System.currentTimeMillis() - startWhen) + " sleepTime : " + sleepTime);
+
+                        if (sleepTime > 0)
+                            Thread.sleep(sleepTime);
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                    */
+                    if(outIndex<0)break;
+
+                    ByteBuffer outputFrame = decoderOutputBuffers[outIndex];
+                    if (outputFrame != null) {
+                        outputFrame.position(info.offset);
+                        outputFrame.limit(info.offset + info.size);
+                    }
+
+                    mDecoder.releaseOutputBuffer(outIndex, true /* render to surface */);
+                    break;
+            }
+
+            // All decoded frames have been rendered, we can stop playing now
+            if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                Log.e(TAG, "OutputBuffer BUFFER_FLAG_END_OF_STREAM");
+                break;
+            }
+        }
+
+        mDecoder.stop();
+        mDecoder.release();
+        //mExtractor.release();
+    }
+
+
+    /*
+    @Override
+    public void run() {
+
+        if (!init()) {
+            Log.e(TAG, "ERROR while initializing MediaCodec");
             return;
         }
         BufferInfo info = new BufferInfo();
@@ -466,43 +580,49 @@ public class VideoDecoderThread extends Thread {
 
 
         boolean isInput = true;
-        boolean first = false;
-        long startWhen = 0;
+        //boolean first = false;
+        //long startWhen = 0;
 
+
+        ByteBuffer[] decoderInputBuffers = mDecoder.getInputBuffers();
+        ByteBuffer[] decoderOutputBuffers = mDecoder.getOutputBuffers();
+
+        int inputIndex = -1;
+        int outputIndex = -1;
 
         while (!eosReceived) {
             //byte[] chunk = streamListener.getNextChunk();
             if (isInput) {
-                byte[] nextchunk=null;
+                byte[] nextNALU=null;
                 try{
-                    nextchunk = picker.getNALU();   //streamListener.getNextChunk();
+                    nextNALU = picker.getNALU();   //streamListener.getNextChunk();
                 } catch (Exception e) {
                     e.printStackTrace();
                     Log.e(TAG, e.getMessage());
                 }
 
-                if (nextchunk == null) {
+                if (nextNALU == null) {
                     continue;
                 }
 
-                int inputIndex = mDecoder.dequeueInputBuffer(10000);
+                inputIndex = mDecoder.dequeueInputBuffer(10000);
                 if (inputIndex >= 0) {
                     // fill inputBuffers[inputBufferIndex] with valid data
                     //ByteBuffer inputBuffer = inputBuffers[inputIndex];
 
-                    ByteBuffer inputBuffer = ByteBuffer.wrap(nextchunk);
+                    ByteBuffer inputBuffer = ByteBuffer.wrap(nextNALU);
                     //int sampleSize = mExtractor.readSampleData(inputBuffer, 0);
 
                     long currentTime = System.currentTimeMillis();
                     //if (mExtractor.advance() && sampleSize > 0) {
-                    mDecoder.queueInputBuffer(inputIndex, 0, nextchunk.length, currentTime, 0);
+                    mDecoder.queueInputBuffer(inputIndex, 0, nextNALU.length, currentTime, 0);
                     /*
                     } else {
                         Log.d(TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM");
                         mDecoder.queueInputBuffer(inputIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                         isInput = false;
                     }
-                    */
+
                 }
             }
 
@@ -538,7 +658,7 @@ public class VideoDecoderThread extends Thread {
                         e.printStackTrace();
                     }
 
-                    mDecoder.releaseOutputBuffer(outIndex, true /* Surface init */);
+                    mDecoder.releaseOutputBuffer(outIndex, true /* Surface init );
                     break;
             }
 
@@ -553,6 +673,7 @@ public class VideoDecoderThread extends Thread {
         mDecoder.release();
         //mExtractor.release();
     }
+    */
 
     public void close() {
         eosReceived = true;
