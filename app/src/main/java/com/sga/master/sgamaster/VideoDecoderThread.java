@@ -1,7 +1,9 @@
 package com.sga.master.sgamaster;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 import android.media.MediaCodec;
 import android.media.MediaCodec.BufferInfo;
@@ -480,11 +482,14 @@ public class VideoDecoderThread extends Thread {
         int outIndex = -1;
 
         while (!eosReceived) {
-            //byte[] chunk = streamListener.getNextChunk();
+
             if (isInput) {
                 byte[] nextNALU=null;
                 try{
-                    nextNALU = picker.getNALU();   //streamListener.getNextChunk();
+                    Log.e(TAG,"getting a NALU");
+
+
+                    nextNALU = picker.getNALU2();
                 } catch (Exception e) {
                     e.printStackTrace();
                     Log.e(TAG, e.getMessage());
@@ -496,12 +501,11 @@ public class VideoDecoderThread extends Thread {
 
                 inputIndex = mDecoder.dequeueInputBuffer(10000);
                 if (inputIndex >= 0) {
+                    currentTime = System.currentTimeMillis();
                     // fill inputBuffers[inputBufferIndex] with valid data
                     ByteBuffer inputBuffer = decoderInputBuffers[inputIndex];
                     inputBuffer.clear();
                     inputBuffer.put(nextNALU);
-
-                    currentTime = System.currentTimeMillis();
 
                     mDecoder.queueInputBuffer(inputIndex, 0, nextNALU.length, currentTime, 0);
 
@@ -562,7 +566,6 @@ public class VideoDecoderThread extends Thread {
 
         mDecoder.stop();
         mDecoder.release();
-        //mExtractor.release();
     }
 
 
@@ -686,10 +689,21 @@ public class VideoDecoderThread extends Thread {
         private StreamListener streamListener;
         private byte[] currentChunk = null;
         private int chunkPos = 0;
+        private byte[] slidingBuffer = new byte[]{0xF, 0xF, 0xF, 0xF, 0xF};
+        private final int MB = 1048576;
+
+
 
         public BytePicker(StreamListener streamListener) throws Exception {
             this.streamListener = streamListener;
             readTillDelimiter();
+        }
+
+        public int getQueueSize(){
+            if(streamListener!=null)
+                return streamListener.getQueueSize();
+
+            return -1;
         }
 
         //busy waiting of bytes
@@ -733,12 +747,58 @@ public class VideoDecoderThread extends Thread {
             }
         }
 
-        private byte[] slidingBuffer = new byte[]{0xF, 0xF, 0xF, 0xF, 0xF};
-        private final int MB = 1048576;
+
+
+        //busy waiting of NALU
+        public byte[] getNALU2() throws Exception {
+            //byte[] temp = new byte[2*MB];
+            ByteArrayOutputStream temp = new ByteArrayOutputStream();
+
+            temp.write(slidingBuffer);
+
+            int tPos = slidingBuffer.length;
+
+            boolean delimiterFound = false;
+
+            slidingBuffer[0] = getNextByte();
+            slidingBuffer[1] = getNextByte();
+            slidingBuffer[2] = getNextByte();
+            slidingBuffer[3] = getNextByte();
+            slidingBuffer[4] = getNextByte();
+
+            delimiterFound = (slidingBuffer[0] == 0x00 && slidingBuffer[1] == 0x00 && slidingBuffer[2] == 0x00 && slidingBuffer[3] == 0x01);
+            while (!delimiterFound) {
+
+                temp.write(slidingBuffer[0]);
+                tPos++;
+
+                slidingBuffer[0] = slidingBuffer[1];
+                slidingBuffer[1] = slidingBuffer[2];
+                slidingBuffer[2] = slidingBuffer[3];
+                slidingBuffer[3] = slidingBuffer[4];
+                slidingBuffer[4] = getNextByte();
+
+                delimiterFound = (slidingBuffer[0] == 0x00 && slidingBuffer[1] == 0x00 && slidingBuffer[2] == 0x00 && slidingBuffer[3] == 0x01);
+
+            }
+
+            Log.e("Next NALU will be:", "type=" + slidingBuffer[0] + slidingBuffer[1] + slidingBuffer[2] + slidingBuffer[3] + " " + slidingBuffer[4]);
+
+
+            /*
+            ByteBuffer buff = ByteBuffer.wrap(temp.toByteArray());
+            byte[] chunk = new byte[temp.size()-5];
+            buff.get(chunk, 0, temp.size()-5);
+            return chunk;
+            */
+            return temp.toByteArray();
+        }
+
+
 
         //busy waiting of NALU
         public byte[] getNALU() throws Exception {
-            byte[] temp = new byte[MB];
+            byte[] temp = new byte[2*MB];
             int tPos;
 
             for (tPos = 0; tPos < slidingBuffer.length; tPos++)
@@ -771,6 +831,52 @@ public class VideoDecoderThread extends Thread {
             return NALU;
 
         }
+
+
+        /*
+        public byte[] getNextChunk(){
+
+            if(slidingBuffer!=null){
+
+                byte[] temp = new byte[2*MB];
+                int tPos;
+                for (tPos = 0; tPos < slidingBuffer.length; tPos++)
+                    temp[tPos] = slidingBuffer[tPos];
+
+                while(currentChunk==null) {
+                    currentChunk = streamListener.getNextChunk();
+                    chunkPos=0;
+                }
+
+                while(chunkPos<currentChunk.length){
+
+                    temp[tPos]=currentChunk[chunkPos];
+                    tPos++;
+                    chunkPos++;
+                }
+
+                slidingBuffer=null;
+
+                String debug = "";
+                byte[] chunk = new byte[tPos];
+                for(int i = 0; i<tPos; i++){
+                    chunk[i]=temp[i];
+                    debug=debug+chunk[i];
+                }
+                Log.e("DEBUG",debug);
+                return chunk;
+            }
+            else{
+
+                currentChunk=streamListener.getNextChunk();
+
+                while(currentChunk==null)
+                    currentChunk=streamListener.getNextChunk();
+
+                return currentChunk;
+            }
+
+        }*/
 
 
     }

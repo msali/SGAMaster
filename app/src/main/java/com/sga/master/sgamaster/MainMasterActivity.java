@@ -23,7 +23,7 @@ import java.net.URISyntaxException;
 public class MainMasterActivity extends AppCompatActivity implements SurfaceHolder.Callback{
 
     private String TAG = "MainMasterActivity";
-    private String SGA_URI = "ws://192.168.1.5:8088";
+    private String SGA_URI = "ws://192.168.1.57:8088";
     private SurfaceView videoView;
     private VideoDecoderThread mVideoDecoder;
     private StreamListener streamListener = new StreamListener();

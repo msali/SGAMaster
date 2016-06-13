@@ -9,6 +9,7 @@ import com.neovisionaries.ws.client.WebSocketFrame;
 import com.neovisionaries.ws.client.WebSocketListener;
 import com.neovisionaries.ws.client.WebSocketState;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -22,9 +23,19 @@ public class StreamListener implements WebSocketListener {
     private String TAG = "StreamListener";
     private ConcurrentLinkedQueue<byte[]> chunks = new ConcurrentLinkedQueue<byte[]>();
 
+
     public byte[] getNextChunk(){
         //Retrieves and removes the head of this queue, or returns null if this queue is empty
         return chunks.poll();
+    }
+
+    public int getQueueSize()
+    {
+
+        if(chunks!=null)
+            return chunks.size();
+
+        return -1;
     }
 
     public StreamListener(){
@@ -64,7 +75,7 @@ public class StreamListener implements WebSocketListener {
     @Override
     public void onBinaryFrame(WebSocket websocket, WebSocketFrame frame) throws Exception {
 
-        Log.e(TAG, "byte frame received");
+
 
     }
 
@@ -78,7 +89,8 @@ public class StreamListener implements WebSocketListener {
 
     @Override
     public void onBinaryMessage(WebSocket websocket, byte[] binary) throws Exception {
-        Log.e("received", "binary");
+        Log.e(TAG, "(prev onFrame) onBinaryMessage: byte frame received");
+        Log.e(TAG, "NCHUNKS"+ chunks.size());
 
         //Inserts the specified element at the tail of this queue.
         chunks.offer(binary);
@@ -91,7 +103,7 @@ public class StreamListener implements WebSocketListener {
 
     @Override
     public void onFrame(WebSocket websocket, WebSocketFrame frame) throws Exception {
-        Log.e(TAG,"onFrame");
+        //Log.e(TAG,"onFrame");
     }
 
     @Override
