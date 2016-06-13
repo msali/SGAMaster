@@ -21,7 +21,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class StreamListener implements WebSocketListener {
 
     private String TAG = "StreamListener";
+    private long INTERVAL = System.currentTimeMillis();
+    boolean firstINT = true;
     private ConcurrentLinkedQueue<byte[]> chunks = new ConcurrentLinkedQueue<byte[]>();
+
 
 
     public byte[] getNextChunk(){
@@ -87,13 +90,21 @@ public class StreamListener implements WebSocketListener {
 
     }
 
+
+
     @Override
     public void onBinaryMessage(WebSocket websocket, byte[] binary) throws Exception {
-        Log.e(TAG, "(prev onFrame) onBinaryMessage: byte frame received");
+        chunks.offer(binary);
+
+        long newTime = System.currentTimeMillis();
+        long intv=newTime-INTERVAL;
+        INTERVAL=newTime;
+
+        Log.e(TAG, "(prev onFrame) onBinaryMessage:"+binary.length+" byte received. TIMEINMILLIS:"+intv);
         Log.e(TAG, "NCHUNKS"+ chunks.size());
 
         //Inserts the specified element at the tail of this queue.
-        chunks.offer(binary);
+
     }
 
     @Override

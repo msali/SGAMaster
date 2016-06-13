@@ -40,11 +40,12 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
         // Create a web socket factory. The timeout value remains 0.
         //wsfactory = new WebSocketFactory();
-        wsfactory = new WebSocketFactory().setConnectionTimeout(2000);
+        wsfactory = new WebSocketFactory().setConnectionTimeout(5000);
 
         videoView = new SurfaceView(this);//(SurfaceView) this.findViewById(R.id.videoView);
 
-        videoView.getHolder().setFixedSize(720,1184);
+        //videoView.getHolder().setFixedSize(720,1184);
+        videoView.getHolder().setFixedSize(720,1280);
         videoView.getHolder().addCallback(this);
 
         setContentView(videoView);
@@ -83,6 +84,9 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
                 Log.e("ClientConnector","connected");
                 mVideoDecoder.start();
+
+
+                Log.e(TAG, "new videoencoder started");
 
                 Log.e("ClientConnector","connected");
             } catch (IOException e) {
@@ -150,9 +154,10 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         SURFACE_WIDTH=width;
         SURFACE_HEIGHT=height;
         if(getResources().getConfiguration().orientation== Configuration.ORIENTATION_LANDSCAPE)return;
-        Log.e(TAG, "w:"+width+" h:"+height+"   VS 720x1184");
+        Log.e(TAG, "w:"+width+" h:"+height+"   VS 720x1280");
         mVideoDecoder = new VideoDecoderThread(streamListener,videoView.getHolder().getSurface(),width,height);
 
+        Log.e(TAG, "new videoencoder");
 
     }
 

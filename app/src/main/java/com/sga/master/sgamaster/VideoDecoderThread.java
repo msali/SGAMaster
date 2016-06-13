@@ -486,8 +486,8 @@ public class VideoDecoderThread extends Thread {
             if (isInput) {
                 byte[] nextNALU=null;
                 try{
-                    Log.e(TAG,"getting a NALU");
 
+                    Log.e(TAG,"getting a NALU");
 
                     nextNALU = picker.getNALU2();
                 } catch (Exception e) {
@@ -711,6 +711,7 @@ public class VideoDecoderThread extends Thread {
             if (streamListener == null) throw new Exception(this.TAG + ": null StreamListener");
 
             while (currentChunk == null) {
+                Thread.yield();
                 currentChunk = streamListener.getNextChunk();
                 chunkPos = 0;
             }
@@ -724,7 +725,10 @@ public class VideoDecoderThread extends Thread {
             } else {
 
                 currentChunk = streamListener.getNextChunk();
-                while(currentChunk==null)currentChunk = streamListener.getNextChunk();
+                while(currentChunk==null){
+                    Thread.yield();
+                    currentChunk = streamListener.getNextChunk();
+                }
 
                 chunkPos = 0;
                 next = currentChunk[chunkPos];
