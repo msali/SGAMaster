@@ -94,13 +94,17 @@ public class VideoDecoderThread extends Thread {
 
 
     private ByteBuffer[] readConfigFrame() {
+
+        Log.e(TAG,"readConfigFrame()");
         try {
             byte[] sps = picker.getNALU();
             byte[] pps = picker.getNALU();
             ByteBuffer[] cfgBuff = new ByteBuffer[2];
             cfgBuff[0] = ByteBuffer.wrap(sps);
             cfgBuff[1] = ByteBuffer.wrap(pps);
+            Log.e(TAG,"readConfigFrame() END");
             return cfgBuff;
+
         } catch (Exception e) {
             e.printStackTrace();
             Log.e(TAG, e.getMessage());
@@ -460,10 +464,13 @@ public class VideoDecoderThread extends Thread {
     @Override
     public void run() {
 
+        Log.e(TAG, "run()");
         if (!init()) {
             Log.e(TAG, "ERROR while initializing MediaCodec");
             return;
         }
+        else Log.e(TAG,"init done");
+
         BufferInfo info = new BufferInfo();
         //ByteBuffer[] inputBuffers = mDecoder.getInputBuffers();
         //mDecoder.getOutputBuffers();
@@ -483,6 +490,7 @@ public class VideoDecoderThread extends Thread {
 
         while (!eosReceived) {
 
+            Log.e(TAG, "Entered main loop");
             if (isInput) {
                 byte[] nextNALU=null;
                 try{
@@ -691,12 +699,12 @@ public class VideoDecoderThread extends Thread {
         private int chunkPos = 0;
         private byte[] slidingBuffer = new byte[]{0xF, 0xF, 0xF, 0xF, 0xF};
         private final int MB = 1048576;
+        private boolean firstRead = true;
 
 
 
         public BytePicker(StreamListener streamListener) throws Exception {
             this.streamListener = streamListener;
-            readTillDelimiter();
         }
 
         public int getQueueSize(){
@@ -708,6 +716,7 @@ public class VideoDecoderThread extends Thread {
 
         //busy waiting of bytes
         private byte getNextByte() throws Exception {
+            //Log.e(TAG, "getNextByte()");
             if (streamListener == null) throw new Exception(this.TAG + ": null StreamListener");
 
             while (currentChunk == null) {
@@ -738,6 +747,7 @@ public class VideoDecoderThread extends Thread {
         }
 
         private void readTillDelimiter() throws Exception {
+            Log.e(TAG, "readTillDelimiter()");
             boolean delimiterFound = false;
 
             while (!delimiterFound) {
@@ -749,12 +759,19 @@ public class VideoDecoderThread extends Thread {
 
                 delimiterFound = (slidingBuffer[0] == 0x00 && slidingBuffer[1] == 0x00 && slidingBuffer[2] == 0x00 && slidingBuffer[3] == 0x01);
             }
+
+            Log.e(TAG, "readTillDelimiter() END");
         }
 
 
 
         //busy waiting of NALU
         public byte[] getNALU2() throws Exception {
+
+            if(firstRead){
+                firstRead=false;
+                readTillDelimiter();
+            }
             //byte[] temp = new byte[2*MB];
             ByteArrayOutputStream temp = new ByteArrayOutputStream();
 
@@ -802,6 +819,12 @@ public class VideoDecoderThread extends Thread {
 
         //busy waiting of NALU
         public byte[] getNALU() throws Exception {
+
+            if(firstRead){
+                firstRead=false;
+                readTillDelimiter();
+            }
+
             byte[] temp = new byte[2*MB];
             int tPos;
 

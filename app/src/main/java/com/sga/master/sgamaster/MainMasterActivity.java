@@ -26,7 +26,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     private String SGA_URI = "ws://192.168.1.57:8088";
     private SurfaceView videoView;
     private VideoDecoderThread mVideoDecoder;
-    private StreamListener streamListener = new StreamListener();
+    private StreamListener streamListener;
     //private StreamClient client;
     ClientConnector connectionThread;
     private WebSocketFactory wsfactory;
@@ -34,6 +34,9 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
+
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         //setContentView(R.layout.customlayout);
@@ -49,7 +52,6 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         videoView.getHolder().addCallback(this);
 
         setContentView(videoView);
-
 
 
 
@@ -81,14 +83,14 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
                 Log.e("ClientConnector","connected");
                 while(mVideoDecoder==null);
 
+                Log.e("ClientConnector","mVideoDecoder created");
 
-                Log.e("ClientConnector","connected");
+                //initialized in surfaceChanged()
                 mVideoDecoder.start();
 
+                Log.e("ClientConnector","mVideoDecoder started");
 
-                Log.e(TAG, "new videoencoder started");
-
-                Log.e("ClientConnector","connected");
+                Log.e("ClientConnector","end of run()");
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (WebSocketException e) {
@@ -104,8 +106,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     public void onStart() {
         super.onStart();
 
-        connectionThread = new ClientConnector();
-        connectionThread.start();
+
     }
 
     @Override
@@ -142,6 +143,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     private int SURFACE_WIDTH,SURFACE_HEIGHT;
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        Log.e(TAG,"surfaceChanged");
         /*if (mVideoDecoder != null) {
             if (mVideoDecoder.init(holder.getSurface(), this.SGA_URI)) {
                 mVideoDecoder.start();
@@ -153,11 +155,18 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         }*/
         SURFACE_WIDTH=width;
         SURFACE_HEIGHT=height;
-        if(getResources().getConfiguration().orientation== Configuration.ORIENTATION_LANDSCAPE)return;
+
         Log.e(TAG, "w:"+width+" h:"+height+"   VS 720x1280");
+
+        if(getResources().getConfiguration().orientation== Configuration.ORIENTATION_LANDSCAPE)return;
+
+        streamListener= new StreamListener();
         mVideoDecoder = new VideoDecoderThread(streamListener,videoView.getHolder().getSurface(),width,height);
 
-        Log.e(TAG, "new videoencoder");
+        if(connectionThread==null) {
+            connectionThread = new ClientConnector();
+            connectionThread.start();
+        }
 
     }
 
