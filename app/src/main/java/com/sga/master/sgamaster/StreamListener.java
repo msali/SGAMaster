@@ -24,7 +24,7 @@ public class StreamListener implements WebSocketListener {
     private long INTERVAL = System.currentTimeMillis();
     boolean firstINT = true;
     private ConcurrentLinkedQueue<byte[]> chunks = new ConcurrentLinkedQueue<byte[]>();
-
+    private WebSocket wsocket=null;
 
 
     public byte[] getNextChunk(){
@@ -54,9 +54,13 @@ public class StreamListener implements WebSocketListener {
 
     }
 
+
+
     @Override
     public void onConnected(WebSocket websocket, Map<String, List<String>> headers) throws Exception {
         Log.e(TAG,"onConnected");
+        wsocket=websocket;
+
     }
 
     @Override
@@ -67,6 +71,7 @@ public class StreamListener implements WebSocketListener {
     @Override
     public void onDisconnected(WebSocket websocket, WebSocketFrame serverCloseFrame, WebSocketFrame clientCloseFrame, boolean closedByServer) throws Exception {
         Log.e(TAG,"onDisconnected");
+        wsocket=null;
     }
 
 

@@ -23,7 +23,8 @@ import java.net.URISyntaxException;
 public class MainMasterActivity extends AppCompatActivity implements SurfaceHolder.Callback{
 
     private String TAG = "MainMasterActivity";
-    private String SGA_URI = "ws://192.168.1.57:8088";
+    //private String SGA_URI = "ws://192.168.1.57:8088";
+    private String SGA_URI = "ws://192.168.1.2:8088";
     private SurfaceView videoView;
     private VideoDecoderThread mVideoDecoder;
     private StreamListener streamListener;
@@ -48,7 +49,9 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         videoView = new SurfaceView(this);//(SurfaceView) this.findViewById(R.id.videoView);
 
         //videoView.getHolder().setFixedSize(720,1184);
-        videoView.getHolder().setFixedSize(720,1280);
+        //videoView.getHolder().setFixedSize(720,1280);
+        videoView.getHolder().setFixedSize(360,480);
+
         videoView.getHolder().addCallback(this);
 
         setContentView(videoView);
@@ -153,8 +156,11 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
             }
 
         }*/
+
+
         SURFACE_WIDTH=width;
         SURFACE_HEIGHT=height;
+
 
         Log.e(TAG, "w:"+width+" h:"+height+"   VS 720x1280");
 
