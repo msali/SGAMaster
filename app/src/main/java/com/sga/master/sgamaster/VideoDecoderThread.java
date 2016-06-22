@@ -4,11 +4,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import android.media.MediaCodec;
 import android.media.MediaCodec.BufferInfo;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 import android.view.Surface;
 
@@ -19,32 +23,83 @@ public class VideoDecoderThread extends Thread {
 
     private static final String VIDEO = "video/";
     private static final String MIME = "video/avc";
-    private static final String TAG = "VideoDecoder";
-    //private MediaExtractor mExtractor;
+    private static final String TAG = "VideoDecoderThread";
+    private static final byte SPS_TYPE = 0x67;
+    private static final byte PPS_TYPE = 0x68;
+
     private MediaCodec mDecoder;
+    private MediaFormat format;
+    boolean isInput = true;
+    private BufferInfo info;
+    private long currentTime;
+    private ByteBuffer[] decoderInputBuffers;
+    private ByteBuffer[] decoderOutputBuffers;
+    private int inputIndex = -1;
+    private int outIndex = -1;
 
+
+    private boolean isReady=false;
     private boolean eosReceived;
+    private boolean DECODER_IS_STARTED = false;
 
-    //private StreamListener streamListener;
-    private BytePicker picker;
+    private BytePickerThread pickerThread;
+    private StreamListener streamListener;
+
     private Surface surface;
     private int vidW, vidH;
 
+
+    public final int NEW_NALU_AVAILABLE = 0;
+
+    //public final int SPS_NALU_AVAILABLE = 1;
+
+    //public final int PPS_NALU_AVAILABLE = 2;
+
+
+    private Handler videoDecoderHandler;
+
+
     public VideoDecoderThread(StreamListener streamListener, Surface surface, int vidW, int vidH) {
-        //this.streamListener = streamListener;
-        try {
-            picker = new BytePicker(streamListener);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Log.e(TAG, e.getMessage());
-        }
+
+        this.streamListener=streamListener;
         this.surface = surface;
         this.vidW = vidW;
         this.vidH = vidH;
 
     }
 
+    private Handler getVideoDecoderHandler(){
+        return videoDecoderHandler;
+    }
 
+
+    private boolean init() {
+        eosReceived = false;
+        mDecoder=null;
+        try {
+            //mExtractor = new MediaExtractor();
+            //mExtractor.setDataSource(filePath);
+
+            //for (int i = 0; i < mExtractor.getTrackCount(); i++) {
+            //MediaFormat format = mExtractor.getTrackFormat(i);
+
+            format = MediaFormat.createVideoFormat(MIME, vidW, vidH);
+
+            //A key describing the desired clockwise rotation on an output surface.
+            format.setInteger(MediaFormat.KEY_ROTATION, 0);
+
+            String mime = MIME;//= format.getString(MediaFormat.KEY_MIME);
+            //if (mime.startsWith(VIDEO)) {
+            //mExtractor.selectTrack(i);
+            mDecoder = MediaCodec.createDecoderByType(MIME);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return true;
+    }
+    /*
     private boolean init() {
         eosReceived = false;
         mDecoder=null;
@@ -67,23 +122,17 @@ public class VideoDecoderThread extends Thread {
             try {
                 //Log.d(TAG, "format : " + format);
                 ByteBuffer[] configBuffers = readConfigFrame();
-                format.setByteBuffer("csd-0", configBuffers[0]/*sps*/);
-                format.setByteBuffer("csd-1", configBuffers[1]/*pps*/);
-                mDecoder.configure(format, surface, null/* crypto */, 0 /* Decoder */);
+                format.setByteBuffer("csd-0", configBuffers[0]);//sps
+                format.setByteBuffer("csd-1", configBuffers[1]);//pps
+                mDecoder.configure(format, surface, null, 0);//null = no encryption , 0 = Decoder
 
             } catch (IllegalStateException e) {
                 Log.e(TAG, "codec '" + mime + "' failed configuration. " + e);
                 return false;
-            } /*catch (Exception e) {
-                        e.printStackTrace();
-                        return false;
-                    }*/
+            }
 
             mDecoder.start();
             Log.e(TAG,"decoder started");
-            //break;
-            //}
-            //}
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -91,8 +140,9 @@ public class VideoDecoderThread extends Thread {
 
         return true;
     }
+    */
 
-
+    /*
     private ByteBuffer[] readConfigFrame() {
 
         Log.e(TAG,"readConfigFrame()");
@@ -114,227 +164,6 @@ public class VideoDecoderThread extends Thread {
 
     }
 
-    /*
-    private ByteBuffer[] readConfigFrame(){
-
-        Log.e(TAG,"readConfigFrame");
-
-        while(currentChunk==null)currentChunk=streamListener.getNextChunk();
-
-        ByteBuffer mConfigBuffer = ByteBuffer.wrap(currentChunk);
-        byte[] array = new byte[mConfigBuffer.remaining()];
-        mConfigBuffer.get(array);
-
-        boolean lastDel = false;
-        int spsIdx = -1, spsSize = 0, ppsIdx = -1, ppsSize = 0;
-        for(int i=0; i <= array.length-4; i++){
-            boolean delimiterFound =
-                    (array[i]==0 && array[i+1]==0 && array[i+2]==0 && array[i+3]==1);
-            if (spsIdx < 0 && delimiterFound){
-                spsIdx = i;
-                Log.e(TAG," d0: "+array[i]+" d1: "+array[i+1]+" d2: "+array[i+2]+" d3: "+array[i+3]+" t: "+array[i+4]+" spsIDX="+spsIdx);
-
-            }
-            else if (ppsIdx < 0 && delimiterFound){
-                spsSize = i - spsIdx;
-                ppsIdx = i;
-
-                Log.e(TAG," d0: "+array[i]+" d1: "+array[i+1]+" d2: "+array[i+2]+" d3: "+array[i+3]+" t: "+array[i+4]+" ppsIDX="+ppsIdx);
-
-                ppsSize = array.length - ppsIdx;
-
-            }
-            else if(spsIdx>0 && ppsIdx>0 && delimiterFound){
-                Log.e(TAG," d0: "+array[i]+" d1: "+array[i+1]+" d2: "+array[i+2]+" d3: "+array[i+3]+" t: "+array[i+4]+" ppsIDX="+ppsIdx);
-                ppsSize=i-ppsIdx;
-                break;
-            }
-        }
-        Log.e(TAG,"readConfigFrame");
-        byte[] spsArray = new byte[spsSize], ppsArray = new byte[ppsSize];
-        Log.e(TAG,"1");
-        //mConfigBuffer.position(0);
-        for(int i = 0; i<spsSize;i++){
-            spsArray[i]=currentChunk[spsIdx+i];
-        }
-        //mConfigBuffer.get(spsArray, 0, spsSize);
-        for(int i = 0; i<ppsSize;i++){
-            ppsArray[i]=currentChunk[ppsIdx+i];
-        }
-        //mConfigBuffer.get(ppsArray, 0, ppsSize);
-        Log.e(TAG,"3");
-        ByteBuffer sps = ByteBuffer.wrap(spsArray);
-        Log.e(TAG,"4");
-        ByteBuffer pps = ByteBuffer.wrap(ppsArray);
-        Log.e(TAG,"5");
-        ByteBuffer[] configBuffers = new ByteBuffer[2];
-        configBuffers[0] = sps;
-        configBuffers[1] = pps;
-
-        Log.e(TAG,"cfgNALU1="+sps.remaining());
-        Log.e(TAG,"d0: "+spsArray[0]+" d1: "+spsArray[1]+" d2:"+spsArray[2]+" d3: "+spsArray[3]+" t: "+spsArray[4]);
-
-        Log.e(TAG,"cfgNALU2="+pps.remaining());
-        Log.e(TAG,"d0: "+ppsArray[0]+" d1: "+ppsArray[1]+" d2:"+ppsArray[2]+" d3: "+ppsArray[3]+" t: "+ppsArray[4]);
-
-        int sum = pps.remaining()+sps.remaining();
-        Log.e(TAG,"cfgNALUsum="+sum);
-        Log.e(TAG,"firstchunk="+currentChunk.length);
-        Log.e(TAG, ""+0x67);
-        Log.e(TAG, ""+0x68);
-
-
-
-        return configBuffers;
-
-    }
-    */
-
-    //private byte[] configNALU1;
-    //private byte[] configNALU2;
-
-    ///private byte[] currentChunk = null;
-    ///private int currentChunkOffset = 0;
-    ///private final int MB = 1048576;
-
-
-    /*
-    private ByteBuffer[] readConfigFrame() throws Exception {
-
-        //for(currentChunkOffset=0;currentChunkOffset<)
-        byte[] delimiter = new byte[4];
-        byte type = 0xD;
-
-        //get first chunk
-        while (currentChunk == null)
-            currentChunk = streamListener.getNextChunk();
-
-        currentChunkOffset = 0;
-
-        //exception to be fixed if initial chunk length is less than 5 bytes
-        if (currentChunk.length < 5) throw new Exception("Initial chunk length is less than 5");
-
-        delimiter[0] = currentChunk[currentChunkOffset];
-        delimiter[1] = currentChunk[currentChunkOffset + 1];
-        delimiter[2] = currentChunk[currentChunkOffset + 2];
-        delimiter[3] = currentChunk[currentChunkOffset + 3];
-        type = currentChunk[currentChunkOffset + 4];
-        currentChunkOffset = currentChunkOffset + 5;
-
-        while (!(delimiter[0] == 0x00 && delimiter[1] == 0x00 && delimiter[2] == 0x00 && delimiter[3] == 0x01 && type == 0x67)) {
-
-            //Log.e(TAG+"DEL","d0:"+delimiter[0]+"d1:"+delimiter[1]+"d2:"+delimiter[2]+"d3:"+delimiter[3]+"t:"+type);
-
-            delimiter[0] = delimiter[1];
-            delimiter[1] = delimiter[2];
-            delimiter[2] = delimiter[3];
-            delimiter[3] = type;
-            type = currentChunk[currentChunkOffset];
-
-            currentChunkOffset++;
-        }
-
-
-        Log.e(TAG,"currChOff67="+currentChunkOffset+"-1");
-
-
-        byte[] temp = new byte[MB];
-        int offset = 0;
-        temp[offset] = delimiter[0];
-        temp[offset + 1] = delimiter[1];
-        temp[offset + 2] = delimiter[2];
-        temp[offset + 3] = delimiter[3];
-        temp[offset + 4] = type;
-        offset = offset + 5;
-
-
-        byte[] delimiter2 = new byte[4];
-
-        //exception to be fixed if initial chunk length is less than 5 bytes
-        if (currentChunk.length - currentChunkOffset < 5)
-            throw new Exception("Second config chunk length is less than 5");
-
-        delimiter2[0] = -1;//currentChunk[currentChunkOffset];
-        delimiter2[1] = -1;//currentChunk[currentChunkOffset + 1];
-        delimiter2[2] = -1;//currentChunk[currentChunkOffset + 2];
-        delimiter2[3] = -1;//currentChunk[currentChunkOffset + 3];
-        byte type2 = 0xD;
-
-        //type2 = -1;//currentChunk[currentChunkOffset + 4];
-
-
-
-        while (!(delimiter2[0] == 0x00 && delimiter2[1] == 0x00 && delimiter2[2] == 0x00 && delimiter2[3] == 0x01 && type2 == 0x68)) {
-
-            //Log.e(TAG+"del1","d0:"+delimiter2[0]+"d1:"+delimiter2[1]+"d2:"+delimiter2[2]+"d3:"+delimiter2[3]+"t:"+type);
-
-            temp[offset] = currentChunk[currentChunkOffset];
-            delimiter2[0] = delimiter2[1];
-            delimiter2[1] = delimiter2[2];
-            delimiter2[2] = delimiter2[3];
-            delimiter2[3] = type2;
-            type2 = currentChunk[currentChunkOffset];
-            currentChunkOffset++;
-            offset++;
-        }
-        Log.e(TAG,"currChOff68="+currentChunkOffset+"-1");
-        //Log.e(TAG,"d0: "+delimiter2[0]+" d1: "+delimiter2[1]+" d2:"+delimiter2[2]+" d3: "+delimiter2[3]+" t: "+type2);
-
-
-        byte [] configNALU1 = new byte[offset - 5];
-        for (int i = 0; i < offset - 5; i++) configNALU1[i] = temp[i];
-
-        offset = 0;
-        temp[offset] = delimiter2[0];
-        temp[offset + 1] = delimiter2[1];
-        temp[offset + 2] = delimiter2[2];
-        temp[offset + 3] = delimiter2[3];
-        temp[offset + 4] = type2;
-        offset = offset + 5;
-
-
-        delimiter2[0] = -1;//currentChunk[currentChunkOffset];
-        delimiter2[1] = -1;//currentChunk[currentChunkOffset + 1];
-        delimiter2[2] = -1;//currentChunk[currentChunkOffset + 2];
-        delimiter2[3] = -1;//currentChunk[currentChunkOffset + 3];
-
-        while (!(delimiter2[0] == 0x00 && delimiter2[1] == 0x00 && delimiter2[2] == 0x00 && delimiter2[3] == 0x01)) {
-
-            //Log.e(TAG+"del2","d0:"+delimiter2[0]+"d1:"+delimiter2[1]+"d2:"+delimiter2[2]+"d3:"+delimiter2[3]);
-            temp[offset] = currentChunk[currentChunkOffset];
-            delimiter2[0] = delimiter2[1];
-            delimiter2[1] = delimiter2[2];
-            delimiter2[2] = delimiter2[3];
-            delimiter2[3] = currentChunk[currentChunkOffset];
-            currentChunkOffset++;
-            offset++;
-        }
-
-
-        byte[] configNALU2 = new byte[offset - 4];
-        for (int i = 0; i < offset - 4; i++) configNALU2[i] = temp[i];
-
-        //submitConfigNALUtoCodec(configNALU1);
-        //submitConfigNALUtoCodec(configNALU2);
-
-        ByteBuffer[] configBuffers = new ByteBuffer[2];
-        configBuffers[0] = ByteBuffer.wrap(configNALU1);
-        configBuffers[1] = ByteBuffer.wrap(configNALU2);
-
-        Log.e(TAG,"cfgNALU1="+configNALU1.length);
-        Log.e(TAG,"d0: "+configNALU1[0]+" d1: "+configNALU1[1]+" d2:"+configNALU1[2]+" d3: "+configNALU1[3]+" t: "+type);
-        Log.e(TAG,"cfgNALU2="+configNALU2.length);
-        Log.e(TAG,"d0: "+configNALU2[0]+" d1: "+configNALU2[1]+" d2:"+configNALU2[2]+" d3: "+configNALU2[3]+" t: "+type2);
-        int sum = configNALU1.length+configNALU2.length;
-        Log.e(TAG,"cfgNALUsum="+sum);
-        Log.e(TAG,"firstchunk="+currentChunk.length);
-        Log.e(TAG, ""+0x67);
-        Log.e(TAG, ""+0x68);
-
-
-        return configBuffers;
-    }
-    */
 
     private void submitConfigNALUtoCodec(byte[] configNALU) {
 
@@ -366,103 +195,251 @@ public class VideoDecoderThread extends Thread {
                 break;
 
             default:
-                mDecoder.releaseOutputBuffer(outIndex, true /* Surface init */);
+                mDecoder.releaseOutputBuffer(outIndex, true);//true = surface init
                 break;
         }
 
     }
+    */
 
-    /*
-    private void readConfigFrame() throws Exception {
+    public boolean isReady(){
 
-        //for(currentChunkOffset=0;currentChunkOffset<)
-        byte[] delimiter = new byte[4];
-        byte type = 0xD;
+        return isReady;
+    }
 
-        //get first chunk
-        while(currentChunk==null)
-            currentChunk = streamListener.getNextChunk();
 
-        currentChunkOffset=0;
+    public void sendNewNaluMessage(){
 
-        //exception to be fixed if initial chunk length is less than 5 bytes
-        if(currentChunk.length<5)throw new Exception("Initial chunk length is less than 5");
+        Message newNaluMessage = new Message();
+        newNaluMessage.what = NEW_NALU_AVAILABLE;
+        this.videoDecoderHandler.sendMessage(newNaluMessage);
 
-        delimiter[0]=currentChunk[currentChunkOffset];
-        delimiter[1]=currentChunk[currentChunkOffset+1];
-        delimiter[2]=currentChunk[currentChunkOffset+2];
-        delimiter[3]=currentChunk[currentChunkOffset+3];
-        type = currentChunk[currentChunkOffset+4];
-        currentChunkOffset=currentChunkOffset+5;
+    }
 
-        while(!(delimiter[0]==0x00 && delimiter[1]==0x00 && delimiter[2]==0x00 && delimiter[3]==0x01 && type==0x67)){
 
-            if(currentChunk == null) {
-                currentChunk = streamListener.getNextChunk();
-                currentChunkOffset=0;
-                continue;
+    public class VideoDecoderHandlerCallback implements Handler.Callback {
+
+
+        @Override
+        public boolean handleMessage(Message msg) {
+
+            //Log.e(TAG, "NEW MESSAGE");
+            final int what = msg.what;
+            switch(what) {
+                /*
+                case SPS_NALU_AVAILABLE:
+                    doThat();
+                    break;
+                case PPS_NALU_AVAILABLE:
+                    doThat();
+                    break;
+                */
+                case NEW_NALU_AVAILABLE:
+                    handleNewNalu();
+                    break;
             }
-            if(currentChunkOffset+1>=currentChunk.length){
-                currentChunk = streamListener.getNextChunk();
-                currentChunkOffset=0;
-                continue;
-            }
-            delimiter[0]=delimiter[1];
-            delimiter[1]=delimiter[2];
-            delimiter[2]=delimiter[3];
-            delimiter[3]=type;
-            type = currentChunk[currentChunkOffset];
 
-            currentChunkOffset++;
+            return true;
         }
-
-        byte[] delimiter2 = new byte[4];
-        byte type2 = 0xD;
-
-        //exception to be fixed if initial chunk length is less than 5 bytes
-        if(currentChunk.length-currentChunkOffset<5)throw new Exception("Middle chunk length is less than 5");
-
-        delimiter2[0]=currentChunk[currentChunkOffset];
-        delimiter2[1]=currentChunk[currentChunkOffset+1];
-        delimiter2[2]=currentChunk[currentChunkOffset+2];
-        delimiter2[3]=currentChunk[currentChunkOffset+3];
-        type2 = currentChunk[currentChunkOffset+4];
-        currentChunkOffset=currentChunkOffset+5;
-
-
-        while(!(delimiter2[0]==0x00 && delimiter2[1]==0x00 && delimiter2[2]==0x00 && delimiter2[3]==0x01 && type2==0x68)){
-
-            if(currentChunk == null) {
-                currentChunk = streamListener.getNextChunk();
-                currentChunkOffset=0;
-                continue;
-            }
-            if(currentChunkOffset+1>=currentChunk.length){
-                currentChunk = streamListener.getNextChunk();
-                currentChunkOffset=0;
-                continue;
-            }
-            delimiter[0]=delimiter[1];
-            delimiter[1]=delimiter[2];
-            delimiter[2]=delimiter[3];
-            delimiter[3]=type;
-            type = currentChunk[currentChunkOffset];
-
-            currentChunkOffset++;
-        }
-
-
-
-
-
 
 
     }
-    */
+
+    boolean isFirstSPSArrived = false;
+    boolean isFirstPPSArrived = false;
+
+    private void handleNewNalu() {
+
+        byte[] NALU = pickerThread.getNextNalu();
+        if(NALU==null){
+            //Log.e(TAG, "NULL NALU");
+            return;
+        }
+
+        boolean isCorrectNalu = (NALU[0] == 0x00 && NALU[1] == 0x00 && NALU[2] == 0x00 && NALU[3] == 0x01);
+
+        if(isCorrectNalu){
+            if(NALU[4] == SPS_TYPE && !isFirstSPSArrived){
+                isFirstSPSArrived=true;
+                Log.e(TAG,"SPS RECEIVED "+NALU[2]);
+                ByteBuffer spsBuff = ByteBuffer.wrap(NALU);
+                format.setByteBuffer("csd-0", spsBuff/*sps*/);//sps
+                return;
+            }
+            if(NALU[4] == PPS_TYPE && !isFirstPPSArrived){
+                isFirstPPSArrived=true;
+                Log.e(TAG,"PPS RECEIVED "+ NALU[4]);
+                ByteBuffer ppsBuff = ByteBuffer.wrap(NALU);
+                format.setByteBuffer("csd-1", ppsBuff/*pps*/);//pps
+                mDecoder.configure(format, surface, null/* crypto */, 0 /* Decoder */);
+                mDecoder.start();
+                Log.e(TAG,"decoder started");
+                info = new BufferInfo();
+                decoderInputBuffers = mDecoder.getInputBuffers();
+                decoderOutputBuffers = mDecoder.getOutputBuffers();
+                //DECODER_IS_STARTED=true;
+                return;
+            }
+
+            if(/*!DECODER_IS_STARTED*/!isFirstSPSArrived||!isFirstPPSArrived){
+                Log.e(TAG,"Received a not configuration Nalu, while still waiting for sps and pps Nalus.");
+                return;
+            }
+            else{
+                //Log.e(TAG, "Handling a normal NALU.");
+
+                if (isInput) {
+
+                    inputIndex = mDecoder.dequeueInputBuffer(10000);
+                    if (inputIndex >= 0) {
 
 
+                        if(NALU.length>131072){
+                            Log.e(TAG, "NALU dim = "+NALU.length+ " while inputBuffer.limit was "+131072/*inputBuffer.limit()*/);
+                            isFirstPPSArrived=false;
+                            isFirstSPSArrived=false;
+                            mDecoder.stop();
+                            /*
+                            String tempSt = "";
+                            int j = 0;
+                            for(int i = 0; i<NALU.length; i++){
+                                tempSt=tempSt+NALU[i]+" ";
+
+                                j++;
+
+                                if(j==30){
+                                    Log.e(TAG, " EVIL NALU:"+tempSt);
+                                    tempSt="";
+                                    j=0;
+                                }
+                            }
+                            Log.e("-----------------","-------------------------");
+                            System.exit(2);
+                            //
+                            */
+                            return;
+                        }
+                        else {
+
+                            currentTime = System.currentTimeMillis();
+                            // fill inputBuffers[inputBufferIndex] with valid data
+                            ByteBuffer inputBuffer = decoderInputBuffers[inputIndex];
+                            inputBuffer.clear();
+                            inputBuffer.put(NALU);
+                            mDecoder.queueInputBuffer(inputIndex, 0, NALU.length, currentTime, 0);
+                        }
+                    }
+                }
+
+                outIndex = mDecoder.dequeueOutputBuffer(info, 10000);
+                Log.e(TAG,"output buffer dequeued");
+                switch (outIndex) {
+                    case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
+                        Log.e(TAG, "INFO_OUTPUT_BUFFERS_CHANGED");
+                        mDecoder.getOutputBuffers();
+                        break;
+
+                    case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
+                        Log.e(TAG, "INFO_OUTPUT_FORMAT_CHANGED format : " + mDecoder.getOutputFormat());
+                        break;
+
+                    case MediaCodec.INFO_TRY_AGAIN_LATER:
+                        Log.e(TAG, "INFO_TRY_AGAIN_LATER");
+                        break;
+
+                    default:
+                    /*
+                    if (!first) {
+                        startWhen = System.currentTimeMillis();
+                        first = true;
+                    }
+                    try {
+                        long sleepTime = (info.presentationTimeUs / 1000) - (System.currentTimeMillis() - startWhen);
+                        Log.d(TAG, "info.presentationTimeUs : " + (info.presentationTimeUs / 1000) + " playTime: " + (System.currentTimeMillis() - startWhen) + " sleepTime : " + sleepTime);
+
+                        if (sleepTime > 0)
+                            Thread.sleep(sleepTime);
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                    */
+                        if(outIndex<0)break;
+
+                        ByteBuffer outputFrame = decoderOutputBuffers[outIndex];
+                        if (outputFrame != null) {
+                            outputFrame.position(info.offset);
+                            outputFrame.limit(info.offset + info.size);
+                        }
+
+                        mDecoder.releaseOutputBuffer(outIndex, true /* render to surface */);
+                        break;
+                }
+
+                // All decoded frames have been rendered, we can stop playing now
+                if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                    Log.e(TAG, "OutputBuffer BUFFER_FLAG_END_OF_STREAM");
+                    return;
+                }
+
+            }
+
+
+        }
+        else{
+            Log.e(TAG, "UNCORRECT NALU PARSING from the chunk.");
+        }
+
+
+        /*
+        try {
+
+
+
+        } catch (IllegalStateException e) {
+            Log.e(TAG, "codec '" + mime + "' failed configuration. " + e);
+            return false;
+        }
+        */
+
+
+    }
+
+    public void run(){
+
+        if(!init()){
+            Log.e(TAG,"init failed.");
+            return;
+        }
+
+        Looper.prepare();
+
+        videoDecoderHandler = new Handler(new VideoDecoderHandlerCallback());
+
+        Log.e(TAG, "VideoDecoderThread started");
+
+        isReady=true;
+
+        pickerThread=new BytePickerThread(this, streamListener);
+        pickerThread.start();
+
+        while (!pickerThread.isReady()){
+            //Log.e(TAG, "Picker is not ready");
+            Thread.yield();
+        }
+
+        streamListener.setBytePickerThread(pickerThread);
+
+
+        Looper.loop();
+
+    }
+
+    /*
     @Override
     public void run() {
+
+
 
         Log.e(TAG, "run()");
         if (!init()) {
@@ -513,10 +490,15 @@ public class VideoDecoderThread extends Thread {
                     // fill inputBuffers[inputBufferIndex] with valid data
                     ByteBuffer inputBuffer = decoderInputBuffers[inputIndex];
                     inputBuffer.clear();
-                    inputBuffer.put(nextNALU);
 
-                    mDecoder.queueInputBuffer(inputIndex, 0, nextNALU.length, currentTime, 0);
-
+                    if(nextNALU.length>inputBuffer.limit()){
+                        Log.e(TAG, "NALU dim = "+nextNALU.length+ " while inputBuffer.limit was"+inputBuffer.limit());
+                        continue;
+                    }
+                    else {
+                        inputBuffer.put(nextNALU);
+                        mDecoder.queueInputBuffer(inputIndex, 0, nextNALU.length, currentTime, 0);
+                    }
                 }
             }
 
@@ -537,22 +519,22 @@ public class VideoDecoderThread extends Thread {
                     break;
 
                 default:
-                    /*
-                    if (!first) {
-                        startWhen = System.currentTimeMillis();
-                        first = true;
-                    }
-                    try {
-                        long sleepTime = (info.presentationTimeUs / 1000) - (System.currentTimeMillis() - startWhen);
-                        Log.d(TAG, "info.presentationTimeUs : " + (info.presentationTimeUs / 1000) + " playTime: " + (System.currentTimeMillis() - startWhen) + " sleepTime : " + sleepTime);
 
-                        if (sleepTime > 0)
-                            Thread.sleep(sleepTime);
-                    } catch (InterruptedException e) {
+                    //if (!first) {
+                    //    startWhen = System.currentTimeMillis();
+                    //    first = true;
+                    //}
+                    //try {
+                    //    long sleepTime = (info.presentationTimeUs / 1000) - (System.currentTimeMillis() - startWhen);
+                    //    Log.d(TAG, "info.presentationTimeUs : " + (info.presentationTimeUs / 1000) + " playTime: " + (System.currentTimeMillis() - startWhen) + " sleepTime : " + sleepTime);
+
+                    //    if (sleepTime > 0)
+                    //        Thread.sleep(sleepTime);
+                    //} catch (InterruptedException e) {
                         // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                    */
+                    //    e.printStackTrace();
+                    //}
+
                     if(outIndex<0)break;
 
                     ByteBuffer outputFrame = decoderOutputBuffers[outIndex];
@@ -561,7 +543,7 @@ public class VideoDecoderThread extends Thread {
                         outputFrame.limit(info.offset + info.size);
                     }
 
-                    mDecoder.releaseOutputBuffer(outIndex, true /* render to surface */);
+                    mDecoder.releaseOutputBuffer(outIndex, true  render to surface );//true = render to surface
                     break;
             }
 
@@ -575,7 +557,7 @@ public class VideoDecoderThread extends Thread {
         mDecoder.stop();
         mDecoder.release();
     }
-
+    */
 
     /*
     @Override
@@ -691,220 +673,5 @@ public class VideoDecoderThread extends Thread {
     }
 
 
-    private class BytePicker {
 
-        private String TAG = "BytePicker";
-        private StreamListener streamListener;
-        private byte[] currentChunk = null;
-        private int chunkPos = 0;
-        private byte[] slidingBuffer = new byte[]{0xF, 0xF, 0xF, 0xF, 0xF};
-        private final int MB = 1048576;
-        private boolean firstRead = true;
-
-
-
-        public BytePicker(StreamListener streamListener) throws Exception {
-            this.streamListener = streamListener;
-        }
-
-        public int getQueueSize(){
-            if(streamListener!=null)
-                return streamListener.getQueueSize();
-
-            return -1;
-        }
-
-        //busy waiting of bytes
-        private byte getNextByte() throws Exception {
-            //Log.e(TAG, "getNextByte()");
-            if (streamListener == null) throw new Exception(this.TAG + ": null StreamListener");
-
-            while (currentChunk == null) {
-                Thread.yield();
-                currentChunk = streamListener.getNextChunk();
-                chunkPos = 0;
-            }
-
-            byte next;
-
-            if (chunkPos < currentChunk.length) {
-                next = currentChunk[chunkPos];
-                chunkPos++;
-                return next;
-            } else {
-
-                currentChunk = streamListener.getNextChunk();
-                while(currentChunk==null){
-                    Thread.yield();
-                    currentChunk = streamListener.getNextChunk();
-                }
-
-                chunkPos = 0;
-                next = currentChunk[chunkPos];
-                chunkPos++;
-                return next;
-            }
-        }
-
-        private void readTillDelimiter() throws Exception {
-            Log.e(TAG, "readTillDelimiter()");
-            boolean delimiterFound = false;
-
-            while (!delimiterFound) {
-                slidingBuffer[0] = slidingBuffer[1];
-                slidingBuffer[1] = slidingBuffer[2];
-                slidingBuffer[2] = slidingBuffer[3];
-                slidingBuffer[3] = slidingBuffer[4];
-                slidingBuffer[4] = getNextByte();
-
-                delimiterFound = (slidingBuffer[0] == 0x00 && slidingBuffer[1] == 0x00 && slidingBuffer[2] == 0x00 && slidingBuffer[3] == 0x01);
-            }
-
-            Log.e(TAG, "readTillDelimiter() END");
-        }
-
-
-
-        //busy waiting of NALU
-        public byte[] getNALU2() throws Exception {
-
-            if(firstRead){
-                firstRead=false;
-                readTillDelimiter();
-            }
-            //byte[] temp = new byte[2*MB];
-            ByteArrayOutputStream temp = new ByteArrayOutputStream();
-
-            temp.write(slidingBuffer);
-
-            int tPos = slidingBuffer.length;
-
-            boolean delimiterFound = false;
-
-            slidingBuffer[0] = getNextByte();
-            slidingBuffer[1] = getNextByte();
-            slidingBuffer[2] = getNextByte();
-            slidingBuffer[3] = getNextByte();
-            slidingBuffer[4] = getNextByte();
-
-            delimiterFound = (slidingBuffer[0] == 0x00 && slidingBuffer[1] == 0x00 && slidingBuffer[2] == 0x00 && slidingBuffer[3] == 0x01);
-            while (!delimiterFound) {
-
-                temp.write(slidingBuffer[0]);
-                tPos++;
-
-                slidingBuffer[0] = slidingBuffer[1];
-                slidingBuffer[1] = slidingBuffer[2];
-                slidingBuffer[2] = slidingBuffer[3];
-                slidingBuffer[3] = slidingBuffer[4];
-                slidingBuffer[4] = getNextByte();
-
-                delimiterFound = (slidingBuffer[0] == 0x00 && slidingBuffer[1] == 0x00 && slidingBuffer[2] == 0x00 && slidingBuffer[3] == 0x01);
-
-            }
-
-            Log.e("Next NALU will be:", "type=" + slidingBuffer[0] + slidingBuffer[1] + slidingBuffer[2] + slidingBuffer[3] + " " + slidingBuffer[4]);
-
-
-            /*
-            ByteBuffer buff = ByteBuffer.wrap(temp.toByteArray());
-            byte[] chunk = new byte[temp.size()-5];
-            buff.get(chunk, 0, temp.size()-5);
-            return chunk;
-            */
-            return temp.toByteArray();
-        }
-
-
-
-        //busy waiting of NALU
-        public byte[] getNALU() throws Exception {
-
-            if(firstRead){
-                firstRead=false;
-                readTillDelimiter();
-            }
-
-            byte[] temp = new byte[2*MB];
-            int tPos;
-
-            for (tPos = 0; tPos < slidingBuffer.length; tPos++)
-                temp[tPos] = slidingBuffer[tPos];
-
-
-            boolean delimiterFound = false;
-
-            while (!delimiterFound) {
-                slidingBuffer[0] = slidingBuffer[1];
-                slidingBuffer[1] = slidingBuffer[2];
-                slidingBuffer[2] = slidingBuffer[3];
-                slidingBuffer[3] = slidingBuffer[4];
-                slidingBuffer[4] = getNextByte();
-                temp[tPos] = slidingBuffer[4];
-                tPos++;
-
-                delimiterFound = (slidingBuffer[0] == 0x00 && slidingBuffer[1] == 0x00 && slidingBuffer[2] == 0x00 && slidingBuffer[3] == 0x01);
-            }
-
-            Log.e("Next NALU will be:", "type=" + slidingBuffer[0] + slidingBuffer[1] + slidingBuffer[2] + slidingBuffer[3] + " " + slidingBuffer[4]);
-
-            int NALU_SIZE = tPos - 5;
-            byte[] NALU = new byte[NALU_SIZE];
-
-            for (int i = 0; i < NALU_SIZE; i++)
-                NALU[i] = temp[i];
-
-
-            return NALU;
-
-        }
-
-
-        /*
-        public byte[] getNextChunk(){
-
-            if(slidingBuffer!=null){
-
-                byte[] temp = new byte[2*MB];
-                int tPos;
-                for (tPos = 0; tPos < slidingBuffer.length; tPos++)
-                    temp[tPos] = slidingBuffer[tPos];
-
-                while(currentChunk==null) {
-                    currentChunk = streamListener.getNextChunk();
-                    chunkPos=0;
-                }
-
-                while(chunkPos<currentChunk.length){
-
-                    temp[tPos]=currentChunk[chunkPos];
-                    tPos++;
-                    chunkPos++;
-                }
-
-                slidingBuffer=null;
-
-                String debug = "";
-                byte[] chunk = new byte[tPos];
-                for(int i = 0; i<tPos; i++){
-                    chunk[i]=temp[i];
-                    debug=debug+chunk[i];
-                }
-                Log.e("DEBUG",debug);
-                return chunk;
-            }
-            else{
-
-                currentChunk=streamListener.getNextChunk();
-
-                while(currentChunk==null)
-                    currentChunk=streamListener.getNextChunk();
-
-                return currentChunk;
-            }
-
-        }*/
-
-
-    }
 }

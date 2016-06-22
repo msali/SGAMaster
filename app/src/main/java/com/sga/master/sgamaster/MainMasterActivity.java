@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.nfc.Tag;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -24,7 +25,10 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
     private String TAG = "MainMasterActivity";
     //private String SGA_URI = "ws://192.168.1.57:8088";
-    private String SGA_URI = "ws://192.168.1.2:8088";
+    //private String SGA_URI = "ws://192.168.1.37:8088";
+
+    //private String SGA_URI = "ws://192.168.1.7:8088";
+    private String SGA_URI = "ws://192.168.26.101:8088";
     private SurfaceView videoView;
     private VideoDecoderThread mVideoDecoder;
     private StreamListener streamListener;
@@ -49,8 +53,8 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         videoView = new SurfaceView(this);//(SurfaceView) this.findViewById(R.id.videoView);
 
         //videoView.getHolder().setFixedSize(720,1184);
-        //videoView.getHolder().setFixedSize(720,1280);
-        videoView.getHolder().setFixedSize(360,480);
+        videoView.getHolder().setFixedSize(720,1280);
+        //videoView.getHolder().setFixedSize(360,480);
 
         videoView.getHolder().addCallback(this);
 
@@ -75,13 +79,14 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
                 Log.e("ClientConnector","run1");
                 WebSocket ws = wsfactory.createSocket(SGA_URI, 5000);
 
+
                 Log.e("ClientConnector","run2");
                 ws.addListener(streamListener);
 
                 Log.e("ClientConnector","run3");
                 // Connect to the server and perform an opening handshake.
-                // This method blocks until the opening handshake is finished.
                 ws.connect();
+
 
                 Log.e("ClientConnector","connected");
                 while(mVideoDecoder==null);
@@ -172,6 +177,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         if(connectionThread==null) {
             connectionThread = new ClientConnector();
             connectionThread.start();
+            Log.e(TAG, "client connector started");
         }
 
     }

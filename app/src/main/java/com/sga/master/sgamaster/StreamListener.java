@@ -1,5 +1,6 @@
 package com.sga.master.sgamaster;
 
+import android.os.Message;
 import android.util.Log;
 
 import com.neovisionaries.ws.client.WebSocket;
@@ -24,7 +25,10 @@ public class StreamListener implements WebSocketListener {
     private long INTERVAL = System.currentTimeMillis();
     boolean firstINT = true;
     private ConcurrentLinkedQueue<byte[]> chunks = new ConcurrentLinkedQueue<byte[]>();
+    private BytePickerThread pickerThread;
+    private Message newChunkMessage;
     private WebSocket wsocket=null;
+
 
 
     public byte[] getNextChunk(){
@@ -32,6 +36,11 @@ public class StreamListener implements WebSocketListener {
         return chunks.poll();
     }
 
+    public void setBytePickerThread(BytePickerThread picker){
+
+        pickerThread=picker;
+
+    }
     public int getQueueSize()
     {
 
@@ -44,6 +53,7 @@ public class StreamListener implements WebSocketListener {
     public StreamListener(){
 
         Log.e(TAG, "created");
+
 
     }
 
@@ -85,13 +95,14 @@ public class StreamListener implements WebSocketListener {
 
 
 
+
     }
 
     @Override
     public void onTextMessage(WebSocket websocket, String message) throws Exception {
         // Received a text message.
 
-        Log.e(TAG,"received:"+message);
+        Log.e(TAG,"received message from:"+websocket.getSocket().getRemoteSocketAddress()+":"+message);
 
     }
 
@@ -99,22 +110,24 @@ public class StreamListener implements WebSocketListener {
 
     @Override
     public void onBinaryMessage(WebSocket websocket, byte[] binary) throws Exception {
-        chunks.offer(binary);
 
         long newTime = System.currentTimeMillis();
         long intv=newTime-INTERVAL;
         INTERVAL=newTime;
 
-        Log.e(TAG, "(prev onFrame) onBinaryMessage:"+binary.length+" byte received. TIMEINMILLIS:"+intv);
-        Log.e(TAG, "NCHUNKS"+ chunks.size());
+        //Log.e(TAG, "(prev onFrame) onBinaryMessage:"+binary.length+" byte received. TIMEINMILLIS:"+intv);
+        //Log.e(TAG, "NCHUNKS"+ chunks.size());
 
         //Inserts the specified element at the tail of this queue.
+        chunks.offer(binary);
+        if(pickerThread!=null)
+            pickerThread.sendNewChunkMessage();
 
     }
 
     @Override
     public void onSendingFrame(WebSocket websocket, WebSocketFrame frame) throws Exception {
-        Log.e(TAG,"onSendingFrame");
+        //Log.e(TAG,"onSendingFrame");
     }
 
     @Override
