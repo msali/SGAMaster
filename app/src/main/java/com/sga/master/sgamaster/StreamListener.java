@@ -115,8 +115,8 @@ public class StreamListener implements WebSocketListener {
         long intv=newTime-INTERVAL;
         INTERVAL=newTime;
 
-        //Log.e(TAG, "(prev onFrame) onBinaryMessage:"+binary.length+" byte received. TIMEINMILLIS:"+intv);
-        //Log.e(TAG, "NCHUNKS"+ chunks.size());
+        Log.e(TAG, "(prev onFrame) onBinaryMessage:"+binary.length+" byte received. TIMEINMILLIS:"+intv);
+        Log.e(TAG, "NCHUNKS"+ chunks.size());
 
         //Inserts the specified element at the tail of this queue.
         chunks.offer(binary);

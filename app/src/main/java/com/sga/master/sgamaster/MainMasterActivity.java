@@ -25,7 +25,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
     private String TAG = "MainMasterActivity";
     //private String SGA_URI = "ws://192.168.1.57:8088";
-    //private String SGA_URI = "ws://192.168.1.37:8088";
+    //private String SGA_URI = "ws://192.168.1.41:8088";
 
     //private String SGA_URI = "ws://192.168.1.7:8088";
     private String SGA_URI = "ws://192.168.26.101:8088";
@@ -36,13 +36,16 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     ClientConnector connectionThread;
     private WebSocketFactory wsfactory;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
 
 
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+
 
         //setContentView(R.layout.customlayout);
 
@@ -169,7 +172,8 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
         Log.e(TAG, "w:"+width+" h:"+height+"   VS 720x1280");
 
-        if(getResources().getConfiguration().orientation== Configuration.ORIENTATION_LANDSCAPE)return;
+        //if(getResources().getConfiguration().orientation== Configuration.ORIENTATION_LANDSCAPE)return;
+        if(getResources().getConfiguration().orientation== Configuration.ORIENTATION_PORTRAIT)return;
 
         streamListener= new StreamListener();
         mVideoDecoder = new VideoDecoderThread(streamListener,videoView.getHolder().getSurface(),width,height);

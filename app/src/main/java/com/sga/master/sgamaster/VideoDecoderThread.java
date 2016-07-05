@@ -277,7 +277,8 @@ public class VideoDecoderThread extends Thread {
                 info = new BufferInfo();
                 decoderInputBuffers = mDecoder.getInputBuffers();
                 decoderOutputBuffers = mDecoder.getOutputBuffers();
-                //DECODER_IS_STARTED=true;
+                DECODER_IS_STARTED=true;
+
                 return;
             }
 
@@ -288,7 +289,9 @@ public class VideoDecoderThread extends Thread {
             else{
                 //Log.e(TAG, "Handling a normal NALU.");
 
-                if (isInput) {
+
+                if (DECODER_IS_STARTED) {
+
 
                     inputIndex = mDecoder.dequeueInputBuffer(10000);
                     if (inputIndex >= 0) {
@@ -329,25 +332,26 @@ public class VideoDecoderThread extends Thread {
                             mDecoder.queueInputBuffer(inputIndex, 0, NALU.length, currentTime, 0);
                         }
                     }
-                }
 
-                outIndex = mDecoder.dequeueOutputBuffer(info, 10000);
-                Log.e(TAG,"output buffer dequeued");
-                switch (outIndex) {
-                    case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
-                        Log.e(TAG, "INFO_OUTPUT_BUFFERS_CHANGED");
-                        mDecoder.getOutputBuffers();
-                        break;
+                    outIndex = mDecoder.dequeueOutputBuffer(info, 10000);
 
-                    case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
-                        Log.e(TAG, "INFO_OUTPUT_FORMAT_CHANGED format : " + mDecoder.getOutputFormat());
-                        break;
 
-                    case MediaCodec.INFO_TRY_AGAIN_LATER:
-                        Log.e(TAG, "INFO_TRY_AGAIN_LATER");
-                        break;
+                    Log.e(TAG, "output buffer dequeued");
+                    switch (outIndex) {
+                        case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
+                            Log.e(TAG, "INFO_OUTPUT_BUFFERS_CHANGED");
+                            decoderOutputBuffers = mDecoder.getOutputBuffers();
+                            break;
 
-                    default:
+                        case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
+                            Log.e(TAG, "INFO_OUTPUT_FORMAT_CHANGED format : " + mDecoder.getOutputFormat());
+                            break;
+
+                        case MediaCodec.INFO_TRY_AGAIN_LATER:
+                            //Log.e(TAG, "INFO_TRY_AGAIN_LATER");
+                            break;
+
+                        default:
                     /*
                     if (!first) {
                         startWhen = System.currentTimeMillis();
@@ -364,23 +368,27 @@ public class VideoDecoderThread extends Thread {
                         e.printStackTrace();
                     }
                     */
-                        if(outIndex<0)break;
+                            if (outIndex < 0) return;
 
-                        ByteBuffer outputFrame = decoderOutputBuffers[outIndex];
-                        if (outputFrame != null) {
-                            outputFrame.position(info.offset);
-                            outputFrame.limit(info.offset + info.size);
-                        }
+                            ByteBuffer outputFrame = decoderOutputBuffers[outIndex];
+                            if (outputFrame != null) {
+                                outputFrame.position(info.offset);
+                                outputFrame.limit(info.offset + info.size);
+                            }
 
-                        mDecoder.releaseOutputBuffer(outIndex, true /* render to surface */);
-                        break;
+                            mDecoder.releaseOutputBuffer(outIndex, true /* render to surface */);
+                            break;
+                    }
+
+                    // All decoded frames have been rendered, we can stop playing now
+                    if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                        Log.e(TAG, "OutputBuffer BUFFER_FLAG_END_OF_STREAM");
+                        return;
+                    }
                 }
 
-                // All decoded frames have been rendered, we can stop playing now
-                if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                    Log.e(TAG, "OutputBuffer BUFFER_FLAG_END_OF_STREAM");
-                    return;
-                }
+
+
 
             }
 

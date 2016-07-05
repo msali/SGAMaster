@@ -65,7 +65,7 @@ public class BytePickerThread extends Thread {
 
                     case NEW_CHUNK_AVAILABLE:
                         try {
-                            decodeChunk4();
+                            decodeChunk2();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -117,6 +117,51 @@ public class BytePickerThread extends Thread {
     }
 
 
+    public void decodeChunk5() throws IOException {
+
+        currentChunk = streamListener.getNextChunk();
+
+        Byte current;
+        boolean firstDelimiterFound = false;
+
+        while (!firstDelimiterFound) {
+            current = readByteAndUpdateSlidingBufferDelimiter();
+            firstDelimiterFound = (slidingChunkBuffer[0] == 0x00 && slidingChunkBuffer[1] == 0x00 && slidingChunkBuffer[2] == 0x00 && slidingChunkBuffer[3] == 0x01);
+
+        }
+        tempNALU.write(slidingChunkBuffer);
+
+        current = readByteAndUpdateSlidingBufferDelimiter();
+
+        while (current != null) {
+            tempNALU.write(current);
+
+
+            firstDelimiterFound = (slidingChunkBuffer[0] == 0x00 && slidingChunkBuffer[1] == 0x00 && slidingChunkBuffer[2] == 0x00 && slidingChunkBuffer[3] == 0x01);
+            if (firstDelimiterFound) {
+
+                byte[] temp_buff = tempNALU.toByteArray();
+                byte[] newNALU = new byte[temp_buff.length - 4];
+
+                for (int i = 0; i < temp_buff.length - 4; i++) {
+                    newNALU[i] = temp_buff[i];
+                }
+
+                nalu_Queue.offer(newNALU);
+                videoDecoderThread.sendNewNaluMessage();
+                //tempNALU = new ByteArrayOutputStream();
+                tempNALU.reset();
+                tempNALU.write(slidingChunkBuffer);
+
+
+            }
+            current = readByteAndUpdateSlidingBufferDelimiter();
+
+        }
+
+        tempNALU.reset();
+        Log.e(TAG,"decodeChunk5");
+    }
     public void decodeChunk4() throws IOException {
         final byte[] delimiters = new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01};
         currentChunk = streamListener.getNextChunk();
@@ -133,7 +178,7 @@ public class BytePickerThread extends Thread {
             if (i == 0) {
 
                 tempNALU.write((byte[]) tokenizer.nexToken());
-                Log.e("QUEUE (i=0)",""+tempNALU.toByteArray().length);
+                //Log.e("QUEUE (i=0)",""+tempNALU.toByteArray().length);
                 nalu_Queue.offer(tempNALU.toByteArray());
                 videoDecoderThread.sendNewNaluMessage();
                 tempNALU.reset();
@@ -143,7 +188,7 @@ public class BytePickerThread extends Thread {
                 tempNALU.reset();
                 tempNALU.write(delimiters);
                 tempNALU.write((byte[]) tokenizer.nexToken());
-                Log.e("QUEUE (<i<)",""+tempNALU.toByteArray().length);
+                //Log.e("QUEUE (<i<)",""+tempNALU.toByteArray().length);
                 nalu_Queue.offer(tempNALU.toByteArray());
                 videoDecoderThread.sendNewNaluMessage();
                 tempNALU.reset();
@@ -192,6 +237,7 @@ public class BytePickerThread extends Thread {
             temppp[j] = currentChunk[i];
             j++;
         }
+
     }
 
 
