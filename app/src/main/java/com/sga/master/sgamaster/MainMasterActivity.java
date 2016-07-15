@@ -35,6 +35,9 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     //private StreamClient client;
     ClientConnector connectionThread;
     private WebSocketFactory wsfactory;
+    private int SURFACE_WIDTH = 480;
+    private int SURFACE_HEIGHT = 640;
+
 
 
     @Override
@@ -56,7 +59,8 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         videoView = new SurfaceView(this);//(SurfaceView) this.findViewById(R.id.videoView);
 
         //videoView.getHolder().setFixedSize(720,1184);
-        videoView.getHolder().setFixedSize(720,1280);
+        //videoView.getHolder().setFixedSize(720,1280);
+        videoView.getHolder().setFixedSize(SURFACE_WIDTH,SURFACE_HEIGHT);
         //videoView.getHolder().setFixedSize(360,480);
 
         videoView.getHolder().addCallback(this);
@@ -151,7 +155,6 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     }
 
 
-    private int SURFACE_WIDTH,SURFACE_HEIGHT;
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
         Log.e(TAG,"surfaceChanged");
@@ -165,12 +168,6 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
         }*/
 
-
-        SURFACE_WIDTH=width;
-        SURFACE_HEIGHT=height;
-
-
-        Log.e(TAG, "w:"+width+" h:"+height+"   VS 720x1280");
 
         //if(getResources().getConfiguration().orientation== Configuration.ORIENTATION_LANDSCAPE)return;
         if(getResources().getConfiguration().orientation== Configuration.ORIENTATION_PORTRAIT)return;

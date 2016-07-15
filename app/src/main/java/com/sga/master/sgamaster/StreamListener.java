@@ -103,13 +103,14 @@ public class StreamListener implements WebSocketListener {
         // Received a text message.
 
         Log.e(TAG,"received message from:"+websocket.getSocket().getRemoteSocketAddress()+":"+message);
-
+        
     }
 
 
 
     @Override
     public void onBinaryMessage(WebSocket websocket, byte[] binary) throws Exception {
+
 
         long newTime = System.currentTimeMillis();
         long intv=newTime-INTERVAL;
