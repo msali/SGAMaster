@@ -9,8 +9,10 @@ import com.neovisionaries.ws.client.WebSocketException;
 import com.neovisionaries.ws.client.WebSocketFrame;
 import com.neovisionaries.ws.client.WebSocketListener;
 import com.neovisionaries.ws.client.WebSocketState;
+import com.threed.jpct.Object3D;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +31,15 @@ public class StreamListener implements WebSocketListener {
     private Message newChunkMessage;
     private WebSocket wsocket=null;
 
+
+    public void sendObject3D(Object3D o3d) throws IOException {
+
+        if(wsocket!=null){
+            wsocket.sendBinary(Object3DManager.serializeObject3D(o3d));
+        }
+        else
+            throw new IOException("Attempt to send an object3D on a null websocket instance.");
+    }
 
 
     public byte[] getNextChunk(){
@@ -103,7 +114,7 @@ public class StreamListener implements WebSocketListener {
         // Received a text message.
 
         Log.e(TAG,"received message from:"+websocket.getSocket().getRemoteSocketAddress()+":"+message);
-        
+
     }
 
 

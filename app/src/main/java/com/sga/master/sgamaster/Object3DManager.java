@@ -12,6 +12,8 @@ import com.threed.jpct.SimpleVector;
 import com.threed.jpct.Texture;
 import com.threed.jpct.TextureManager;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -36,7 +38,33 @@ public class Object3DManager {
     }
 
 
-    public static void serializer(OutputStream out, Object3D obj3d) throws IOException {
+    public static byte[] serializeObject3D(Object3D obj3d) throws IOException {
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        serializeObject3D(out, obj3d);
+
+        byte[] serObj = out.toByteArray();
+
+        // close the stream
+        out.close();
+
+        return serObj;
+    }
+
+
+    public static Object3D deserializeObject3D(byte[] serObj) throws IOException, ClassNotFoundException {
+
+        ByteArrayInputStream in = new ByteArrayInputStream(serObj);
+
+        return deserializeObject3D(in);
+
+    }
+
+
+
+
+    public static void serializeObject3D(OutputStream out, Object3D obj3d) throws IOException {
 
 
         ObjectOutputStream oout = new ObjectOutputStream(out);
@@ -50,7 +78,7 @@ public class Object3DManager {
     }
 
 
-    public static Object3D deserializer(InputStream in) throws IOException, ClassNotFoundException {
+    public static Object3D deserializeObject3D(InputStream in) throws IOException, ClassNotFoundException {
 
 
         ObjectInputStream input = new ObjectInputStream(in);

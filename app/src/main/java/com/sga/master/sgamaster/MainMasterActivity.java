@@ -10,6 +10,9 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 
 import com.neovisionaries.ws.client.WebSocket;
 import com.neovisionaries.ws.client.WebSocketException;
@@ -25,11 +28,14 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
     private String TAG = "MainMasterActivity";
     //private String SGA_URI = "ws://192.168.1.57:8088";
-    //private String SGA_URI = "ws://192.168.1.41:8088";
+    private String SGA_URI = "ws://192.168.1.39:8088";
+    private int streamPort = 8080;
 
     //private String SGA_URI = "ws://192.168.1.7:8088";
-    private String SGA_URI = "ws://192.168.26.101:8088";
+    //private String SGA_URI = "ws://192.168.26.101:8088";
+    private MainMasterActivity act = this;
     private SurfaceView videoView;
+    private Button connButt;
     private VideoDecoderThread mVideoDecoder;
     private StreamListener streamListener;
     //private StreamClient client;
@@ -45,18 +51,19 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         super.onCreate(savedInstanceState);
 
 
-
-        //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 
 
-        //setContentView(R.layout.customlayout);
+        setContentView(R.layout.master_activity_layout);
+
 
         // Create a web socket factory. The timeout value remains 0.
         //wsfactory = new WebSocketFactory();
         wsfactory = new WebSocketFactory().setConnectionTimeout(5000);
 
-        videoView = new SurfaceView(this);//(SurfaceView) this.findViewById(R.id.videoView);
+        //videoView = new SurfaceView(this);//(SurfaceView) this.findViewById(R.id.videoView);
+        videoView = (SurfaceView) this.findViewById(R.id.videoView);
+
 
         //videoView.getHolder().setFixedSize(720,1184);
         //videoView.getHolder().setFixedSize(720,1280);
@@ -65,8 +72,27 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
         videoView.getHolder().addCallback(this);
 
-        setContentView(videoView);
+        connButt = (Button) this.findViewById(R.id.connButton);
+        connButt.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
 
+                if(connectionThread==null) {
+                    connButt.setClickable(false);
+
+                    EditText eText = (EditText) act.findViewById(R.id.ip_address_etext);
+                    SGA_URI = "ws://"+eText.getText().toString()+":"+streamPort;
+                    Log.e(TAG,"inserted IP:"+SGA_URI);
+                    connectionThread = new ClientConnector();
+                    connectionThread.start();
+                    Log.e(TAG, "client connector started");
+                }
+
+            }
+        });
+
+        //setContentView(videoView);
+        //setContentView(R.layout.customlayout);
 
 
     }
@@ -175,11 +201,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         streamListener= new StreamListener();
         mVideoDecoder = new VideoDecoderThread(streamListener,videoView.getHolder().getSurface(),width,height);
 
-        if(connectionThread==null) {
-            connectionThread = new ClientConnector();
-            connectionThread.start();
-            Log.e(TAG, "client connector started");
-        }
+
 
     }
 
