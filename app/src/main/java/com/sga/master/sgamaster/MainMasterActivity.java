@@ -17,6 +17,7 @@ import android.widget.EditText;
 import com.neovisionaries.ws.client.WebSocket;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.neovisionaries.ws.client.WebSocketFactory;
+import com.threed.jpct.Object3D;
 
 import org.java_websocket.drafts.Draft_10;
 
@@ -29,7 +30,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     private String TAG = "MainMasterActivity";
     //private String SGA_URI = "ws://192.168.1.57:8088";
     private String SGA_URI = "ws://192.168.1.39:8088";
-    private int streamPort = 8080;
+    private int streamPort = 8088;
 
     //private String SGA_URI = "ws://192.168.1.7:8088";
     //private String SGA_URI = "ws://192.168.26.101:8088";
@@ -82,7 +83,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
                     EditText eText = (EditText) act.findViewById(R.id.ip_address_etext);
                     SGA_URI = "ws://"+eText.getText().toString()+":"+streamPort;
-                    Log.e(TAG,"inserted IP:"+SGA_URI);
+                    Log.e(TAG,"inserted IP: "+SGA_URI);
                     connectionThread = new ClientConnector();
                     connectionThread.start();
                     Log.e(TAG, "client connector started");
@@ -91,12 +92,31 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
             }
         });
 
+
+        tempButt = (Button) this.findViewById(R.id.tempButton);
+
+        tempButt.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                tempButt.setClickable(false);
+
+                Object3DManager o3dM = new Object3DManager(MainMasterActivity.this);
+
+                Object3D tmpObj3d = o3dM.createObject3D();
+                try {
+                    streamListener.sendObject3D(tmpObj3d);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
         //setContentView(videoView);
         //setContentView(R.layout.customlayout);
 
 
     }
-
+    private Button tempButt;
 
     private class ClientConnector extends Thread{
 

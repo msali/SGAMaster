@@ -38,6 +38,25 @@ public class Object3DManager {
     }
 
 
+    public Object3D createObject3D(){
+        TexturedObject tObj = new TexturedObject("chair",//id
+                R.drawable.chair,//p.e R.drawable.bigoffice//textureID
+                0.025f,//scale
+                -4,//x
+                0,//y
+                -2,//z
+                1);//dim
+
+        tObj.obj3D.rotateX((float)Math.toRadians(90.0));
+
+        //tObj.obj3D.rotateY((float)Math.toRadians(90.0));
+        //tObj.obj3D.rotateZ((float)Math.toRadians(90.0));
+        manageObjectCreationFromModel(tObj);
+
+        return tObj.obj3D;
+
+    }
+
     public static byte[] serializeObject3D(Object3D obj3d) throws IOException {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
