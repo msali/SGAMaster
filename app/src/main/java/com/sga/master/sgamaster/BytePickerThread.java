@@ -1,6 +1,7 @@
 package com.sga.master.sgamaster;
 
 import android.nfc.Tag;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -32,6 +33,7 @@ public class BytePickerThread extends Thread {
 
     //MESSAGE WHAT FIELDS
     public final int NEW_CHUNK_AVAILABLE = 1;
+    public final int SERVER_DISCONNECTED = 2;
 
     public BytePickerThread(VideoDecoderThread videoDecoderThread, StreamListener streamListener) {
         this.streamListener = streamListener;
@@ -69,6 +71,10 @@ public class BytePickerThread extends Thread {
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
+                        break;
+                    case SERVER_DISCONNECTED:
+                        closeBytePickerThread();
+                        videoDecoderThread.sendCloseDecoderMessage();
                         break;
                 }
                 return false;
@@ -522,6 +528,25 @@ public class BytePickerThread extends Thread {
         Message newChunkMessage = new Message();
         newChunkMessage.what = NEW_CHUNK_AVAILABLE;
         pickerHandler.sendMessage(newChunkMessage);
+
+    }
+
+    public void sendOnDisconnectedMessage() {
+
+
+        Message disconnectMex = new Message();
+        disconnectMex.what = SERVER_DISCONNECTED;
+        pickerHandler.sendMessage(disconnectMex);
+
+    }
+
+    public void closeBytePickerThread(){
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            pickerHandler.getLooper().quitSafely();
+        }
+        else
+            pickerHandler.getLooper().quit();
 
     }
 

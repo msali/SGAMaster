@@ -5,6 +5,7 @@ import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.nfc.Tag;
 import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -22,6 +23,7 @@ import com.threed.jpct.Object3D;
 import org.java_websocket.drafts.Draft_10;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.net.URISyntaxException;
 
@@ -35,12 +37,14 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     //private String SGA_URI = "ws://192.168.1.7:8088";
     //private String SGA_URI = "ws://192.168.26.101:8088";
     private MainMasterActivity act = this;
+    private MainHandler mMainHandler;
     private SurfaceView videoView;
     private Button connButt;
     private VideoDecoderThread mVideoDecoder;
     private StreamListener streamListener;
     //private StreamClient client;
     ClientConnector connectionThread;
+    private boolean connectionEstablished = false;
     private WebSocketFactory wsfactory;
     private int SURFACE_WIDTH = 480;
     private int SURFACE_HEIGHT = 640;
@@ -51,6 +55,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        mMainHandler = new MainHandler(this);
 
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 
@@ -78,14 +83,18 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
             @Override
             public void onClick(View v) {
 
+                Log.e("CONNBUTT", "Connect");
+
                 if(connectionThread==null) {
                     connButt.setClickable(false);
-
+                    streamListener= new StreamListener(act);
+                    mVideoDecoder = new VideoDecoderThread(streamListener,videoView.getHolder().getSurface(),SURFACE_WIDTH,SURFACE_HEIGHT);
                     EditText eText = (EditText) act.findViewById(R.id.ip_address_etext);
                     SGA_URI = "ws://"+eText.getText().toString()+":"+streamPort;
                     Log.e(TAG,"inserted IP: "+SGA_URI);
                     connectionThread = new ClientConnector();
                     connectionThread.start();
+                    connectionEstablished=true;
                     Log.e(TAG, "client connector started");
                 }
 
@@ -183,6 +192,14 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         Log.e(TAG,"onResume");
 
 
+        if(connectionEstablished){
+            streamListener= new StreamListener(this);
+            mVideoDecoder = new VideoDecoderThread(streamListener,videoView.getHolder().getSurface(),SURFACE_WIDTH,SURFACE_HEIGHT);
+            connectionThread = new ClientConnector();
+            connectionThread.start();
+        }
+        else
+            connButt.setClickable(true);
 
     }
 
@@ -190,6 +207,14 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     protected void onPause() {
         super.onPause();
 
+        if(mVideoDecoder!=null)
+            mVideoDecoder.closeVideoDecoderThread();
+
+        if(streamListener!=null)
+            streamListener.closeCurrentConnection();
+
+
+        connectionThread=null;
     }
 
 
@@ -214,12 +239,11 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
         }*/
 
-
         //if(getResources().getConfiguration().orientation== Configuration.ORIENTATION_LANDSCAPE)return;
         if(getResources().getConfiguration().orientation== Configuration.ORIENTATION_PORTRAIT)return;
 
-        streamListener= new StreamListener();
-        mVideoDecoder = new VideoDecoderThread(streamListener,videoView.getHolder().getSurface(),width,height);
+        //streamListener= new StreamListener();
+        //mVideoDecoder = new VideoDecoderThread(streamListener,videoView.getHolder().getSurface(),width,height);
 
 
 
@@ -232,4 +256,67 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
             mVideoDecoder.close();
         }
     }
+
+
+
+
+
+
+    public MainHandler getMainHandler(){
+        return mMainHandler;
+    }
+
+
+    /**
+     * Custom message handler for main UI thread.
+     * <p/>
+     * Receives messages from the renderer thread with UI-related updates.
+     */
+    public static class MainHandler extends Handler {
+        private static final int MSG_ACTIVATE_CONNECT_BUTTON = 0;
+        private static final int MSG_DISABLE_CONNECT_BUTTON = 1;
+
+        private WeakReference<MainMasterActivity> mWeakActivity;
+
+        public MainHandler(MainMasterActivity activity) {
+            mWeakActivity = new WeakReference<MainMasterActivity>(activity);
+        }
+
+        public void sendActivateConnectButton() {
+            sendMessage(obtainMessage(MSG_ACTIVATE_CONNECT_BUTTON));
+        }
+
+        public void sendDisableConnectButton() {
+            sendMessage(obtainMessage(MSG_DISABLE_CONNECT_BUTTON));
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            MainMasterActivity activity = mWeakActivity.get();
+            if (activity == null) {
+                return;
+            }
+
+            switch (msg.what) {
+                case MSG_ACTIVATE_CONNECT_BUTTON: {
+
+                    activity.connectionEstablished=false;
+                    Log.e("ACTIVATE BUTTON", "connectionEstablished:"+activity.connectionEstablished);
+                    activity.connButt.setClickable(true);
+                    break;
+                }
+                case MSG_DISABLE_CONNECT_BUTTON: {
+                    activity.connButt.setClickable(false);
+                    activity.connectionEstablished=true;
+                    Log.e("DISABLE BUTTON", "connectionEstablished:"+activity.connectionEstablished);
+                    break;
+                }
+                default:
+                    throw new RuntimeException("Unknown message " + msg.what);
+            }
+        }
+
+    }
+
+
 }

@@ -10,6 +10,7 @@ import android.media.MediaCodec;
 import android.media.MediaCodec.BufferInfo;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -50,6 +51,7 @@ public class VideoDecoderThread extends Thread {
 
 
     public final int NEW_NALU_AVAILABLE = 0;
+    public final int CLOSE_DECODER = 1;
 
     //public final int SPS_NALU_AVAILABLE = 1;
 
@@ -67,6 +69,8 @@ public class VideoDecoderThread extends Thread {
         this.vidH = vidH;
 
     }
+
+
 
     private Handler getVideoDecoderHandler(){
         return videoDecoderHandler;
@@ -216,6 +220,15 @@ public class VideoDecoderThread extends Thread {
 
     }
 
+    public void sendCloseDecoderMessage(){
+
+        Message closeMex = new Message();
+        closeMex.what = CLOSE_DECODER;
+        videoDecoderHandler.sendMessage(closeMex);
+
+    }
+
+
 
     public class VideoDecoderHandlerCallback implements Handler.Callback {
 
@@ -236,6 +249,9 @@ public class VideoDecoderThread extends Thread {
                 */
                 case NEW_NALU_AVAILABLE:
                     handleNewNalu();
+                    break;
+                case CLOSE_DECODER:
+                    closeVideoDecoderThread();
                     break;
             }
 
@@ -336,7 +352,7 @@ public class VideoDecoderThread extends Thread {
                     outIndex = mDecoder.dequeueOutputBuffer(info, 10000);
 
 
-                    Log.e(TAG, "output buffer dequeued");
+                    //Log.e(TAG, "output buffer dequeued");
                     switch (outIndex) {
                         case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
                             Log.e(TAG, "INFO_OUTPUT_BUFFERS_CHANGED");
@@ -413,6 +429,16 @@ public class VideoDecoderThread extends Thread {
 
     }
 
+    public void closeVideoDecoderThread(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            videoDecoderHandler.getLooper().quitSafely();
+        }
+        else
+            videoDecoderHandler.getLooper().quit();
+
+        pickerThread.closeBytePickerThread();
+    }
+
     public void run(){
 
         if(!init()){
@@ -440,6 +466,7 @@ public class VideoDecoderThread extends Thread {
 
 
         Looper.loop();
+
 
     }
 

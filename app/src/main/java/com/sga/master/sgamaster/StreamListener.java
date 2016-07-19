@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.neovisionaries.ws.client.WebSocket;
 import com.neovisionaries.ws.client.WebSocketAdapter;
+import com.neovisionaries.ws.client.WebSocketCloseCode;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.neovisionaries.ws.client.WebSocketFrame;
 import com.neovisionaries.ws.client.WebSocketListener;
@@ -26,6 +27,7 @@ public class StreamListener implements WebSocketListener {
     private String TAG = "StreamListener";
     private long INTERVAL = System.currentTimeMillis();
     boolean firstINT = true;
+    //private boolean paused = false;
     private ConcurrentLinkedQueue<byte[]> chunks = new ConcurrentLinkedQueue<byte[]>();
     private BytePickerThread pickerThread;
     private Message newChunkMessage;
@@ -47,11 +49,31 @@ public class StreamListener implements WebSocketListener {
         return chunks.poll();
     }
 
+
+    /*
+    public void pause(){
+        paused=true;
+    }
+
+    public void resume(){
+        paused=false;
+    }
+    */
+
+    public void closeCurrentConnection(){
+        if(wsocket!=null) {
+            //wsocket.sendClose();
+            wsocket.disconnect(WebSocketCloseCode.NORMAL,"paused activity");
+            wsocket=null;
+        }
+    }
+
     public void setBytePickerThread(BytePickerThread picker){
 
         pickerThread=picker;
 
     }
+
     public int getQueueSize()
     {
 
@@ -61,10 +83,12 @@ public class StreamListener implements WebSocketListener {
         return -1;
     }
 
-    public StreamListener(){
+    private MainMasterActivity activity;
+    public StreamListener(MainMasterActivity activity){
 
         Log.e(TAG, "created");
 
+        this.activity=activity;
 
     }
 
@@ -79,8 +103,10 @@ public class StreamListener implements WebSocketListener {
 
     @Override
     public void onConnected(WebSocket websocket, Map<String, List<String>> headers) throws Exception {
+        activity.getMainHandler().sendDisableConnectButton();
         Log.e(TAG,"onConnected");
         wsocket=websocket;
+
 
     }
 
@@ -91,8 +117,13 @@ public class StreamListener implements WebSocketListener {
 
     @Override
     public void onDisconnected(WebSocket websocket, WebSocketFrame serverCloseFrame, WebSocketFrame clientCloseFrame, boolean closedByServer) throws Exception {
-        Log.e(TAG,"onDisconnected");
+        Log.e(TAG,"onDisconnected: closed by server "+closedByServer);
         wsocket=null;
+        pickerThread.sendOnDisconnectedMessage();
+
+        if(closedByServer)
+            activity.getMainHandler().sendActivateConnectButton();
+
     }
 
 
@@ -105,14 +136,11 @@ public class StreamListener implements WebSocketListener {
     public void onBinaryFrame(WebSocket websocket, WebSocketFrame frame) throws Exception {
 
 
-
-
     }
 
     @Override
     public void onTextMessage(WebSocket websocket, String message) throws Exception {
         // Received a text message.
-
         Log.e(TAG,"received message from:"+websocket.getSocket().getRemoteSocketAddress()+":"+message);
 
     }
@@ -122,13 +150,15 @@ public class StreamListener implements WebSocketListener {
     @Override
     public void onBinaryMessage(WebSocket websocket, byte[] binary) throws Exception {
 
-
+        /*
         long newTime = System.currentTimeMillis();
         long intv=newTime-INTERVAL;
         INTERVAL=newTime;
-
         Log.e(TAG, "(prev onFrame) onBinaryMessage:"+binary.length+" byte received. TIMEINMILLIS:"+intv);
         Log.e(TAG, "NCHUNKS"+ chunks.size());
+        */
+
+        //if(paused)return;
 
         //Inserts the specified element at the tail of this queue.
         chunks.offer(binary);
