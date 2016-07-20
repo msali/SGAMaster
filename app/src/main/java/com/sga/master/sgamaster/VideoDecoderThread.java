@@ -430,11 +430,16 @@ public class VideoDecoderThread extends Thread {
     }
 
     public void closeVideoDecoderThread(){
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-            videoDecoderHandler.getLooper().quitSafely();
+
+        Looper lp = videoDecoderHandler.getLooper();
+        if(lp!=null){
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                    lp.quitSafely();
+            }
+            else {
+                    lp.quit();
+            }
         }
-        else
-            videoDecoderHandler.getLooper().quit();
 
         pickerThread.closeBytePickerThread();
     }

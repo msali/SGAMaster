@@ -43,7 +43,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     private VideoDecoderThread mVideoDecoder;
     private StreamListener streamListener;
     //private StreamClient client;
-    ClientConnector connectionThread;
+    //ClientConnector connectionThread;
     private boolean connectionEstablished = false;
     private WebSocketFactory wsfactory;
     private int SURFACE_WIDTH = 480;
@@ -85,18 +85,21 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
                 Log.e("CONNBUTT", "Connect");
 
-                if(connectionThread==null) {
+                //if(connectionThread==null) {
                     connButt.setClickable(false);
                     streamListener= new StreamListener(act);
                     mVideoDecoder = new VideoDecoderThread(streamListener,videoView.getHolder().getSurface(),SURFACE_WIDTH,SURFACE_HEIGHT);
                     EditText eText = (EditText) act.findViewById(R.id.ip_address_etext);
                     SGA_URI = "ws://"+eText.getText().toString()+":"+streamPort;
                     Log.e(TAG,"inserted IP: "+SGA_URI);
+                    asynchConnectionTask();
+                    /*
                     connectionThread = new ClientConnector();
                     connectionThread.start();
+                    */
                     connectionEstablished=true;
                     Log.e(TAG, "client connector started");
-                }
+                //}
 
             }
         });
@@ -127,7 +130,50 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     }
     private Button tempButt;
 
+    public void asynchConnectionTask(){
+
+        try {
+            // Create a web socket with a socket connection timeout value.
+            //WebSocket ws = wsfactory.createSocket("ws://localhost/endpoint", 5000);
+            //timeout = 5000
+
+            Log.e("ClientConnector","run1");
+            WebSocket ws = wsfactory.createSocket(SGA_URI, 5000);
+
+
+            Log.e("ClientConnector","run2");
+            ws.addListener(streamListener);
+
+            Log.e("ClientConnector","run3");
+
+            // Connect to the server and perform an opening handshake.
+            //connection done in a separate thread
+            ws.connectAsynchronously();
+
+
+            Log.e("ClientConnector","connected");
+            //while(mVideoDecoder==null);
+
+            Log.e("ClientConnector","mVideoDecoder created");
+
+            //initialized in surfaceChanged()
+            mVideoDecoder.start();
+
+            Log.e("ClientConnector","mVideoDecoder started");
+
+            Log.e("ClientConnector","end of run()");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
+
+    /*
     private class ClientConnector extends Thread{
+
+
 
 
         @Override
@@ -171,6 +217,8 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
         }
     }
+    */
+
 
     @Override
     public void onStart() {
@@ -195,8 +243,9 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
         if(connectionEstablished){
             streamListener= new StreamListener(this);
             mVideoDecoder = new VideoDecoderThread(streamListener,videoView.getHolder().getSurface(),SURFACE_WIDTH,SURFACE_HEIGHT);
-            connectionThread = new ClientConnector();
-            connectionThread.start();
+            asynchConnectionTask();
+            //connectionThread = new ClientConnector();
+            //connectionThread.start();
         }
         else
             connButt.setClickable(true);
@@ -211,10 +260,10 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
             mVideoDecoder.closeVideoDecoderThread();
 
         if(streamListener!=null)
-            streamListener.closeCurrentConnection();
+            streamListener.pause();
 
 
-        connectionThread=null;
+        //connectionThread=null;
     }
 
 
@@ -273,8 +322,10 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
      * Receives messages from the renderer thread with UI-related updates.
      */
     public static class MainHandler extends Handler {
-        private static final int MSG_ACTIVATE_CONNECT_BUTTON = 0;
-        private static final int MSG_DISABLE_CONNECT_BUTTON = 1;
+
+        //private static final int MSG_UPDATE_CONNECT_BUTTON = 0;
+        private static final int MSG_ACTIVATE_CONNECT_BUTTON = 1;
+        private static final int MSG_DISABLE_CONNECT_BUTTON = 2;
 
         private WeakReference<MainMasterActivity> mWeakActivity;
 
@@ -298,6 +349,14 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
             }
 
             switch (msg.what) {
+                /*
+                case MSG_UPDATE_CONNECT_BUTTON: {
+                    Boolean activate = (Boolean) msg.obj;
+                    activity.connButt.setClickable(activate);
+                    activity.connectionEstablished=!activate;
+                    break;
+                }
+                */
                 case MSG_ACTIVATE_CONNECT_BUTTON: {
 
                     activity.connectionEstablished=false;
