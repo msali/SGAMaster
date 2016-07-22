@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.nfc.Tag;
+import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
@@ -113,6 +114,36 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
                 tempButt.setClickable(false);
 
+                new AsyncTask<Void, Void, Void>(){
+
+                    @Override
+                    protected Void doInBackground(Void... params) {
+
+                        ModelObject3D mObj = new ModelObject3D(
+                                MainMasterActivity.this,
+                                "chair.3ds",//id
+                                //R.drawable.chair,//p.e R.drawable.bigoffice//textureID
+                                0.025f,//scale
+                                -4,//x
+                                0,//y
+                                -2,//z
+                                1);//dim
+
+                        mObj.obj3D.rotateX((float)Math.toRadians(90.0));
+                        JSONEncoder jsonEncoder = new JSONEncoder(MainMasterActivity.this);
+                        String jsonObj3d =  jsonEncoder.encodeObject3DNew("chair", R.drawable.chair, mObj.obj3D);
+
+                        try {
+                            streamListener.sendJSONObject3D(jsonObj3d);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        return null;
+                    }
+                }.execute();
+
+                /*
                 Object3DManager o3dM = new Object3DManager(MainMasterActivity.this);
 
                 Object3D tmpObj3d = o3dM.createObject3D();
@@ -121,6 +152,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                */
             }
         });
         //setContentView(videoView);

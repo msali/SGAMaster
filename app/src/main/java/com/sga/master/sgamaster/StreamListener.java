@@ -34,6 +34,7 @@ public class StreamListener implements WebSocketListener {
     private WebSocket wsocket=null;
 
 
+    /*
     public void sendObject3D(Object3D o3d) throws IOException {
 
         if(wsocket!=null){
@@ -42,7 +43,17 @@ public class StreamListener implements WebSocketListener {
         else
             throw new IOException("Attempt to send an object3D on a null websocket instance.");
     }
+    */
 
+    public void sendJSONObject3D(String jsonObj3d) throws IOException {
+        Log.e(TAG,"sendJSONObject3D");
+        if(wsocket!=null){
+            wsocket.sendText(jsonObj3d);
+            Log.e(TAG,"sendJSONObject3D sent strlen:"+jsonObj3d.length());
+        }
+        else
+            throw new IOException("Attempt to send an object3D on a null websocket instance.");
+    }
 
     public byte[] getNextChunk(){
         //Retrieves and removes the head of this queue, or returns null if this queue is empty

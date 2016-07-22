@@ -277,25 +277,28 @@ public class VideoDecoderThread extends Thread {
         if(isCorrectNalu){
             if(NALU[4] == SPS_TYPE && !isFirstSPSArrived){
                 isFirstSPSArrived=true;
-                Log.e(TAG,"SPS RECEIVED "+NALU[2]);
+                Log.e(TAG,"SPS RECEIVED "+NALU[4]);
                 ByteBuffer spsBuff = ByteBuffer.wrap(NALU);
                 format.setByteBuffer("csd-0", spsBuff/*sps*/);//sps
                 return;
             }
             if(NALU[4] == PPS_TYPE && !isFirstPPSArrived){
-                isFirstPPSArrived=true;
-                Log.e(TAG,"PPS RECEIVED "+ NALU[4]);
-                ByteBuffer ppsBuff = ByteBuffer.wrap(NALU);
-                format.setByteBuffer("csd-1", ppsBuff/*pps*/);//pps
-                mDecoder.configure(format, surface, null/* crypto */, 0 /* Decoder */);
-                mDecoder.start();
-                Log.e(TAG,"decoder started");
-                info = new BufferInfo();
-                decoderInputBuffers = mDecoder.getInputBuffers();
-                decoderOutputBuffers = mDecoder.getOutputBuffers();
-                DECODER_IS_STARTED=true;
 
-                return;
+                    isFirstPPSArrived = true;
+                    Log.e(TAG, "PPS RECEIVED " + NALU[4]);
+                    ByteBuffer ppsBuff = ByteBuffer.wrap(NALU);
+                    format.setByteBuffer("csd-1", ppsBuff/*pps*/);//pps
+                    mDecoder.configure(format, surface, null/* crypto */, 0 /* Decoder */);
+                    mDecoder.start();
+                    Log.e(TAG, "decoder started");
+                    info = new BufferInfo();
+                    decoderInputBuffers = mDecoder.getInputBuffers();
+                    decoderOutputBuffers = mDecoder.getOutputBuffers();
+                    DECODER_IS_STARTED = true;
+
+                    return;
+
+
             }
 
             if(/*!DECODER_IS_STARTED*/!isFirstSPSArrived||!isFirstPPSArrived){
