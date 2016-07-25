@@ -34,6 +34,69 @@ public class JSONEncoder {
 
 
 
+    public String encodeObject3DNewNew(/*String textureFile,*/String basename, int textureID, Object3D obj3D)
+    {
+        //PrintWriter pw = null;
+        try{
+
+
+            //Bitmap bm = BitmapFactory.decodeResource(act.getResources(), textureID);
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            BitmapFactory.decodeResource(act.getResources(), textureID).compress(Bitmap.CompressFormat.JPEG, 100, stream);
+            //Texture texture = new Texture(bm);
+            //byte byteArray [] = byteBuffer.array();
+            //Log.e(TAG,"byteArray len:"+byteArray.length);
+            //TextureManager.getInstance().addTexture(basename, texture);
+
+            //ByteArrayOutputStream ba = loadFile(textureFile);
+
+            //Converting byte[] to base64 string
+            //NOTE: Always remember to encode your base 64 string in utf8 format other wise you may always get problems on browser.
+
+            //String fileBase64String = org.apache.commons.codec.binary.StringUtils.newStringUtf8(org.apache.commons.codec.binary.Base64.encodeBase64(/*ba.toByteArray()*/byteArray));
+
+
+            //Object3D serialization stuff
+            Object3DManager o3dM = new Object3DManager(act);
+
+            //Object3D tmpObj3d = o3dM.createObject3D();
+            //String obj3Dbase64 = org.apache.commons.codec.binary.StringUtils.newStringUtf8(org.apache.commons.codec.binary.Base64.encodeBase64(Object3DManager.serializeObject3D(obj3D)));
+
+            //writing json
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("successful", true);
+            //jsonObject.put("basename", basename);
+            jsonObject.put("file", org.apache.commons.codec.binary.
+                    StringUtils.newStringUtf8(org.apache.commons.codec.binary.Base64.encodeBase64(stream.toByteArray())));
+            jsonObject.put("obj3d",org.apache.commons.codec.binary.
+                    StringUtils.newStringUtf8(org.apache.commons.codec.binary.Base64.encodeBase64(Object3DManager.serializeObject3D(obj3D))));
+
+
+            return jsonObject.toString();
+
+        }
+        catch(Exception ex) {
+            JSONObject jsonObject = new JSONObject();
+            try {
+                jsonObject.put("successful",false);
+                jsonObject.put("message",ex.getMessage());
+                return jsonObject.toString();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+        }
+        JSONObject jsonObject = new JSONObject();
+        try {
+            jsonObject.put("successful",false);
+            jsonObject.put("message","generic error");
+            return jsonObject.toString();
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return "";
+        }
+    }
+
     public String encodeObject3DNew(/*String textureFile,*/String basename, int textureID, Object3D obj3D)
     {
         //PrintWriter pw = null;
@@ -57,6 +120,7 @@ public class JSONEncoder {
             */
 
             Bitmap bm = BitmapFactory.decodeResource(act.getResources(), textureID);
+
             Texture texture = new Texture(bm);
             //byte byteArray [] = byteBuffer.array();
             //Log.e(TAG,"byteArray len:"+byteArray.length);
@@ -79,7 +143,7 @@ public class JSONEncoder {
             //writing json
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("successful", true);
-            jsonObject.put("basename", basename);
+            //jsonObject.put("basename", basename);
             jsonObject.put("file", org.apache.commons.codec.binary.
                     StringUtils.newStringUtf8(org.apache.commons.codec.binary.Base64.encodeBase64(/*ba.toByteArray()*/Object3DManager.serializeTexture(texture))));
             jsonObject.put("obj3d",org.apache.commons.codec.binary.

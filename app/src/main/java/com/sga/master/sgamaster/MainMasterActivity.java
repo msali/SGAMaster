@@ -131,7 +131,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
                         mObj.obj3D.rotateX((float)Math.toRadians(90.0));
                         JSONEncoder jsonEncoder = new JSONEncoder(MainMasterActivity.this);
-                        String jsonObj3d =  jsonEncoder.encodeObject3DNew("chair", R.drawable.chair, mObj.obj3D);
+                        String jsonObj3d =  jsonEncoder.encodeObject3DNewNew("chair", R.drawable.chair, mObj.obj3D);
 
                         try {
                             streamListener.sendJSONObject3D(jsonObj3d);
