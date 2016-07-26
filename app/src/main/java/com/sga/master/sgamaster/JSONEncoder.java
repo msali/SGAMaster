@@ -25,6 +25,7 @@ import java.util.StringTokenizer;
 public class JSONEncoder {
 
     private String TAG = "JSONEncoder";
+    public String typeTexturedObject3d = "txtobj";
     private MainMasterActivity act;
 
 
@@ -64,6 +65,7 @@ public class JSONEncoder {
 
             //writing json
             JSONObject jsonObject = new JSONObject();
+            jsonObject.put("type", typeTexturedObject3d);
             jsonObject.put("successful", true);
             //jsonObject.put("basename", basename);
             jsonObject.put("file", org.apache.commons.codec.binary.
