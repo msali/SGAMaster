@@ -28,6 +28,8 @@ public class VideoDecoderThread extends Thread {
     private static final byte SPS_TYPE = 0x67;
     private static final byte PPS_TYPE = 0x68;
 
+    private static final int CODEC_BUFFER_LIMIT = 131072;
+
     private MediaCodec mDecoder;
     private MediaFormat format;
     boolean isInput = true;
@@ -248,7 +250,7 @@ public class VideoDecoderThread extends Thread {
                     break;
                 */
                 case NEW_NALU_AVAILABLE:
-                    handleNewNalu();
+                    handleNewNALU();
                     break;
                 case CLOSE_DECODER:
                     closeVideoDecoderThread();
@@ -263,6 +265,78 @@ public class VideoDecoderThread extends Thread {
 
     boolean isFirstSPSArrived = false;
     boolean isFirstPPSArrived = false;
+
+
+    private void handleNewNALU() {
+
+        byte[] NALU = pickerThread.getNextNalu();
+        if(NALU==null){
+            //Log.e(TAG, "NULL NALU");
+            return;
+        }
+
+        boolean isCorrectNalu = (NALU[0] == 0x00 && NALU[1] == 0x00 && NALU[2] == 0x00 && NALU[3] == 0x01);
+
+        if(isCorrectNalu){
+            if(NALU[4] == SPS_TYPE && !isFirstSPSArrived){
+                isFirstSPSArrived=true;
+                Log.e(TAG,"SPS RECEIVED "+NALU[4]);
+                ByteBuffer spsBuff = ByteBuffer.wrap(NALU);
+                format.setByteBuffer("csd-0", spsBuff/*sps*/);//sps
+                return;
+            }
+            if(NALU[4] == PPS_TYPE && !isFirstPPSArrived){
+
+                isFirstPPSArrived = true;
+                Log.e(TAG, "PPS RECEIVED " + NALU[4]);
+                ByteBuffer ppsBuff = ByteBuffer.wrap(NALU);
+                format.setByteBuffer("csd-1", ppsBuff/*pps*/);//pps
+                mDecoder.configure(format, surface, null/* crypto */, 0 /* Decoder */);
+                mDecoder.start();
+                Log.e(TAG, "decoder started");
+                info = new BufferInfo();
+                decoderInputBuffers = mDecoder.getInputBuffers();
+                decoderOutputBuffers = mDecoder.getOutputBuffers();
+                DECODER_IS_STARTED = true;
+
+                return;
+
+
+            }
+
+            if(/*!DECODER_IS_STARTED*/!isFirstSPSArrived||!isFirstPPSArrived){
+                Log.e(TAG,"Received a not configuration Nalu, while still waiting for sps and pps Nalus.");
+                return;
+            }
+            else{
+
+                if (DECODER_IS_STARTED) {
+                    decodeLoop(NALU);
+                }
+
+            }
+
+
+        }
+        else{
+            Log.e(TAG, "UNCORRECT NALU PARSING from the chunk.");
+        }
+
+
+        /*
+        try {
+
+
+
+        } catch (IllegalStateException e) {
+            Log.e(TAG, "codec '" + mime + "' failed configuration. " + e);
+            return false;
+        }
+        */
+
+
+    }
+
 
     private void handleNewNalu() {
 
@@ -316,8 +390,8 @@ public class VideoDecoderThread extends Thread {
                     if (inputIndex >= 0) {
 
 
-                        if(NALU.length>131072){
-                            Log.e(TAG, "NALU dim = "+NALU.length+ " while inputBuffer.limit was "+131072/*inputBuffer.limit()*/);
+                        if(NALU.length>CODEC_BUFFER_LIMIT){
+                            Log.e(TAG, "NALU dim = "+NALU.length+ " while inputBuffer.limit was "+CODEC_BUFFER_LIMIT/*inputBuffer.limit()*/);
                             isFirstPPSArrived=false;
                             isFirstSPSArrived=false;
                             mDecoder.stop();
@@ -478,6 +552,8 @@ public class VideoDecoderThread extends Thread {
 
     }
 
+
+
     /*
     @Override
     public void run() {
@@ -601,6 +677,75 @@ public class VideoDecoderThread extends Thread {
         mDecoder.release();
     }
     */
+
+
+    private void decodeLoop(byte[] NALU){
+
+        if (DECODER_IS_STARTED) {
+
+
+            inputIndex = mDecoder.dequeueInputBuffer(10000);
+            if (inputIndex >= 0) {
+
+
+                if(NALU.length>CODEC_BUFFER_LIMIT){
+                    Log.e(TAG, "NALU dim = "+NALU.length+ " while inputBuffer.limit was "+CODEC_BUFFER_LIMIT/*inputBuffer.limit()*/);
+                    isFirstPPSArrived=false;
+                    isFirstSPSArrived=false;
+                    mDecoder.stop();
+                    return;
+                }
+                else {
+
+                    currentTime = System.currentTimeMillis();
+                    // fill inputBuffers[inputBufferIndex] with valid data
+                    ByteBuffer inputBuffer = decoderInputBuffers[inputIndex];
+                    inputBuffer.clear();
+                    inputBuffer.put(NALU);
+                    mDecoder.queueInputBuffer(inputIndex, 0, NALU.length, currentTime, 0);
+                }
+            }
+
+            outIndex = mDecoder.dequeueOutputBuffer(info, 10000);
+
+
+            //Log.e(TAG, "output buffer dequeued");
+            switch (outIndex) {
+                case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
+                    Log.e(TAG, "INFO_OUTPUT_BUFFERS_CHANGED");
+                    decoderOutputBuffers = mDecoder.getOutputBuffers();
+                    break;
+
+                case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
+                    Log.e(TAG, "INFO_OUTPUT_FORMAT_CHANGED format : " + mDecoder.getOutputFormat());
+                    break;
+
+                case MediaCodec.INFO_TRY_AGAIN_LATER:
+                    //Log.e(TAG, "INFO_TRY_AGAIN_LATER");
+                    break;
+
+                default:
+
+                    if (outIndex < 0) return;
+
+                    ByteBuffer outputFrame = decoderOutputBuffers[outIndex];
+                    if (outputFrame != null) {
+                        outputFrame.position(info.offset);
+                        outputFrame.limit(info.offset + info.size);
+                    }
+
+                    mDecoder.releaseOutputBuffer(outIndex, true /* render to surface */);
+                    break;
+            }
+
+            // All decoded frames have been rendered, we can stop playing now
+            if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                Log.e(TAG, "OutputBuffer BUFFER_FLAG_END_OF_STREAM");
+                return;
+            }
+        }
+
+    }
 
     /*
     @Override

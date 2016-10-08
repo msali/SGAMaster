@@ -131,7 +131,7 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
 
                         mObj.obj3D.rotateX((float)Math.toRadians(90.0));
                         JSONEncoder jsonEncoder = new JSONEncoder(MainMasterActivity.this);
-                        String jsonObj3d =  jsonEncoder.encodeObject3DNewNew("chair", R.drawable.chair, mObj.obj3D);
+                        String jsonObj3d =  jsonEncoder.encodeObject3D("chair", R.drawable.chair, mObj.obj3D);
 
                         try {
                             streamListener.sendJSONObject3D(jsonObj3d);
@@ -201,6 +201,41 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     }
 
 
+    //modelName including extension
+    //drawableID example R.drawable.chair
+    public void streamObject3D(final String modelName, final int drawableID, final float scale, final int dim){
+
+        new AsyncTask<Void, Void, Void>(){
+
+            @Override
+            protected Void doInBackground(Void... params) {
+
+                ModelObject3D mObj = new ModelObject3D(
+                        MainMasterActivity.this,
+                        modelName,//id
+                        //R.drawable.chair,//p.e R.drawable.bigoffice//textureID
+                        scale,//scale
+                        0,//x
+                        0,//y
+                        0,//z
+                        dim);//dim
+
+                //mObj.obj3D.rotateX((float)Math.toRadians(90.0));
+                JSONEncoder jsonEncoder = new JSONEncoder(MainMasterActivity.this);
+                String basename = modelName.substring(modelName.indexOf("."));
+                String jsonObj3d =  jsonEncoder.encodeObject3D(basename, drawableID, mObj.obj3D);
+
+                try {
+                    streamListener.sendJSONObject3D(jsonObj3d);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                return null;
+            }
+        }.execute();
+
+    }
 
     /*
     private class ClientConnector extends Thread{

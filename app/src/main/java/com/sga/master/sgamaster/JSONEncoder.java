@@ -35,7 +35,7 @@ public class JSONEncoder {
 
 
 
-    public String encodeObject3DNewNew(/*String textureFile,*/String basename, int textureID, Object3D obj3D)
+    public String encodeObject3D(/*String textureFile,*/String basename, int textureID, Object3D obj3D)
     {
         //PrintWriter pw = null;
         try{
@@ -200,7 +200,7 @@ public class JSONEncoder {
     }
 
 
-    public String encodeObject3D(/*String textureFile,*/String basename, int textureID, Object3D obj3D)
+    public String encodeObject3Doldold(/*String textureFile,*/String basename, int textureID, Object3D obj3D)
     {
         //PrintWriter pw = null;
         try{

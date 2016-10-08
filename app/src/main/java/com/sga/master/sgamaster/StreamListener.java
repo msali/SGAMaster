@@ -7,10 +7,13 @@ import com.neovisionaries.ws.client.WebSocket;
 import com.neovisionaries.ws.client.WebSocketAdapter;
 import com.neovisionaries.ws.client.WebSocketCloseCode;
 import com.neovisionaries.ws.client.WebSocketException;
+import com.neovisionaries.ws.client.WebSocketFactory;
 import com.neovisionaries.ws.client.WebSocketFrame;
 import com.neovisionaries.ws.client.WebSocketListener;
 import com.neovisionaries.ws.client.WebSocketState;
 import com.threed.jpct.Object3D;
+
+import org.java_websocket.server.WebSocketServer;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -50,6 +53,7 @@ public class StreamListener implements WebSocketListener {
         if(wsocket!=null){
             wsocket.sendText(jsonObj3d);
             Log.e(TAG,"sendJSONObject3D sent strlen:"+jsonObj3d.length());
+            
         }
         else
             throw new IOException("Attempt to send an object3D on a null websocket instance.");
