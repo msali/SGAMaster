@@ -201,8 +201,8 @@ public class MainMasterActivity extends AppCompatActivity implements SurfaceHold
     }
 
 
-    //modelName including extension
-    //drawableID example R.drawable.chair
+    //modelName including extension p.e. chair.3ds
+    //drawableID the textureid example R.drawable.chair
     public void streamObject3D(final String modelName, final int drawableID, final float scale, final int dim){
 
         new AsyncTask<Void, Void, Void>(){

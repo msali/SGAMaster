@@ -1,6 +1,8 @@
 package com.sga.master.sgamaster;
 
 import android.app.Activity;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.util.Log;
 
 import com.threed.jpct.Loader;
@@ -8,6 +10,7 @@ import com.threed.jpct.Matrix;
 import com.threed.jpct.Object3D;
 import com.threed.jpct.SimpleVector;
 import com.threed.jpct.Texture;
+import com.threed.jpct.TextureManager;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,9 +37,38 @@ public class ModelObject3D {
 
     //public String texturePath;
 
+
+    /*
+    Just loads the Object 3D no testuring involved since the object has to be sent
+     */
     public ModelObject3D(Activity activity,
                         String modelFile,
                          //int textureId,///*p.e R.drawable.bigoffice*/
+                         //String texturePath,
+                         float scale,
+                         float x,
+                         float y,
+                         float z,
+                         int dim){
+        this.modelFileName=modelFileName;
+        //this.textureId = textureId;
+        //this.texturePath=texturePath; //path = assets/
+        this.activity=activity;
+        this.scale=scale;
+        this.x=x;
+        this.y=y;
+        this.z=z;
+        dimension=dim;
+        obj3D = loadObject(modelFile, scale);
+    }
+
+
+    /*
+   Loads an object, loads the texture and uses it to texture the loaded Object3D.
+    */
+    public ModelObject3D(Activity activity,
+                         String modelFile,
+                         int textureId,///*p.e R.drawable.bigoffice*/
                          //String texturePath,
                          float scale,
                          float x,
@@ -52,12 +84,16 @@ public class ModelObject3D {
         this.y=y;
         this.z=z;
         dimension=dim;
-        obj3D = loadObject(modelFile, textureId, scale);
+        obj3D = loadObjectAndTexture(modelFile, textureId, scale);
     }
 
 
+
+    /*
+    Just loads the Object 3D no texturing involved since the object has to be sent
+     */
     //texture and model file has to match the same basename p.e. chair.3ds and chair.jpg
-    private Object3D loadObject(String modName, int textureID/*p.e R.drawable.bigoffice*/, float thingScale /*= 1*/)
+    private Object3D loadObject(String modName, float thingScale /*= 1*/)
     {
 
         StringTokenizer sToken = new StringTokenizer(modName,".");
@@ -98,6 +134,52 @@ public class ModelObject3D {
         return null;
     }
 
+
+
+    /*
+    Loads an object, loads the texture and uses it to texture the loaded Object3D.
+     */
+    //texture and model file has to match the same basename p.e. chair.3ds and chair.jpg
+    private Object3D loadObjectAndTexture(String modName, int textureID/*p.e R.drawable.bigoffice*/, float thingScale /*= 1*/)
+    {
+
+        StringTokenizer sToken = new StringTokenizer(modName,".");
+        int ntok = sToken.countTokens();
+        for(int i = 0; i<ntok; i++){
+            if(i==ntok-1) {
+                model_format = sToken.nextToken();
+                break;
+            }
+            else
+                basename=basename+sToken.nextToken();
+        }
+        Log.e(TAG, "basename:"+basename);
+        Log.e(TAG, "mod_form:"+model_format);
+
+
+        Bitmap bm = BitmapFactory.decodeResource(activity.getResources(), textureID);
+        texture = new Texture(bm);
+        TextureManager.getInstance().addTexture(basename, texture);
+
+        try {
+
+            Log.e(TAG, "model file name:"+modName);
+            Object3D objT = loadModel(basename, model_format, thingScale);
+
+            Log.e(TAG, "objT==null :"+Boolean.toString(objT==null));
+            objT.build();
+            objT.setTexture(basename);
+            objT.setName(basename);
+            objT.translate(x, y, z);
+
+            return objT;
+        } catch (UnsupportedEncodingException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        return null;
+    }
 
     //http://stackoverflow.com/questions/15298130/load-3d-models-with-jpct-ae
     private Object3D loadModel(String filename, String format, float scale) throws UnsupportedEncodingException {
